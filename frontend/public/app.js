@@ -16,17 +16,23 @@ const state = {
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOMContentLoaded fired');
     loadFavoritesFromStorage();
     setupEventListeners();
 
     // Load historical data first
+    console.log('About to load historical data');
     await loadHistoricalData();
+    console.log('Historical data loaded');
 
     // Then connect to real-time updates
+    console.log('About to connect to stream');
     connectToAllStocksStream();
 
     // Load favorites data and render
+    console.log('About to load favorites data');
     await loadFavoritesData();
+    console.log('Favorites data loaded');
     renderFavorites();
 });
 
@@ -198,11 +204,14 @@ async function loadHistoricalData() {
     updateConnectionStatus(statusEl, 'connecting');
 
     try {
+        console.log('Fetching historical data from:', `${API_BASE_URL}/history?limit=50`);
         const response = await fetch(`${API_BASE_URL}/history?limit=50`);
+        console.log('History response status:', response.status);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
+        console.log('History data received:', data);
 
         // Process historical data
         data.trading_plans.forEach(plan => {
