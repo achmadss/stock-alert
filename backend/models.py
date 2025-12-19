@@ -1,13 +1,13 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, JSON
+from sqlalchemy import Column, Integer, String, DateTime, Text, JSON, BigInteger
 from database import Base
 from datetime import datetime
 
 class Message(Base):
     __tablename__ = "messages"
 
-    id = Column(Integer, primary_key=True, index=True)
-    chat_id = Column(Integer, index=True)
-    sender_id = Column(Integer, nullable=True)
+    id = Column(BigInteger, primary_key=True, index=True)
+    chat_id = Column(BigInteger, index=True)
+    sender_id = Column(BigInteger, nullable=True)
     text = Column(Text, nullable=True)
     date = Column(DateTime, default=datetime.utcnow)
     raw_text = Column(Text, nullable=True)

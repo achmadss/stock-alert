@@ -41,7 +41,7 @@ async def save_message(msg):
             'chat_id': msg.chat_id,
             'sender_id': msg.sender_id,
             'text': msg.text,
-            'date': msg.date,
+            'date': msg.date.replace(tzinfo=None) if msg.date else None,
             'raw_text': msg.raw_text,
             'is_reply': msg.reply_to_msg_id,
             'forward': json.dumps(msg.forward.to_dict()) if msg.forward else None,
@@ -74,17 +74,40 @@ async def save_message(msg):
         await message_queue.put(message_data)
 
 async def fetch_historical():
-    channel = await client.get_entity(CHANNEL_ID)
-    messages = await client.get_messages(channel, limit=100)  # Adjust limit
-    if messages and isinstance(messages, list):
-        for msg in reversed(messages):  # Oldest first
-            await save_message(msg)
+    try:
+        print("=== FETCH HISTORY ===")
+        channel = await client.get_entity(CHANNEL_ID)
+        messages = await client.get_messages(channel, limit=100)  # Adjust limit
+        print(messages)
+        if messages and isinstance(messages, list):
+            for msg in reversed(messages):  # Oldest first
+                await save_message(msg)
+    except Exception as e:
+        print(f"Error fetching historical messages: {e}")
+        print(f"CHANNEL_ID value: {CHANNEL_ID}")
+        print("Make sure CHANNEL_ID is either:")
+        print("  1. A channel username (e.g., @channelname)")
+        print("  2. A valid channel ID (negative number for channels, e.g., -100123456789)")
+        print("Note: You need to be a member of the channel to fetch messages.")
 
-@client.on(events.NewMessage(chats=CHANNEL_ID))
 async def new_message_handler(event):
     await save_message(event.message)
 
+async def get_channels():
+    dialogs = await client.get_dialogs()
+    channels = []
+    for dialog in dialogs:
+        if dialog.is_channel:
+            channels.append({
+                "id": dialog.entity.id,
+                "name": dialog.entity.title
+            })
+    return channels
+
 async def start_listener():
+    print("Starting Telegram listener...")
     await client.start()  # type: ignore
+    print("Telegram client started successfully")
     await fetch_historical()
+    print("Fetch historical completed, now listening for new messages...")
     await client.run_until_disconnected()  # type: ignore
