@@ -10,6 +10,7 @@ import json
 from alembic.config import Config
 from alembic import command
 import sys
+import asyncio
 
 
 def run_migrations():
@@ -87,14 +88,21 @@ async def alert():
     async def event_generator():
         try:
             while True:
-                trading_plan = await queue.get()
-                trading_plan_copy = trading_plan.copy()
-                trading_plan_copy['datetime'] = trading_plan_copy['datetime'].isoformat()
-                yield f"data: {json.dumps(trading_plan_copy)}\n\n"
+                try:
+                    trading_plan = await asyncio.wait_for(queue.get(), timeout=30.0)
+                    trading_plan_copy = trading_plan.copy()
+                    trading_plan_copy['datetime'] = trading_plan_copy['datetime'].isoformat()
+                    yield f"data: {json.dumps(trading_plan_copy)}\n\n"
+                except asyncio.TimeoutError:
+                    yield ": keep-alive\n\n"
         finally:
             remove_subscriber(queue)
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"}
+    )
 
 @app.get("/alert/{stock_name}")
 async def alert_by_stock(stock_name: str):
@@ -105,15 +113,22 @@ async def alert_by_stock(stock_name: str):
     async def event_generator():
         try:
             while True:
-                trading_plan = await queue.get()
-                if trading_plan['name'].lower() == stock_name_lower:
-                    trading_plan_copy = trading_plan.copy()
-                    trading_plan_copy['datetime'] = trading_plan_copy['datetime'].isoformat()
-                    yield f"data: {json.dumps(trading_plan_copy)}\n\n"
+                try:
+                    trading_plan = await asyncio.wait_for(queue.get(), timeout=30.0)
+                    if trading_plan['name'].lower() == stock_name_lower:
+                        trading_plan_copy = trading_plan.copy()
+                        trading_plan_copy['datetime'] = trading_plan_copy['datetime'].isoformat()
+                        yield f"data: {json.dumps(trading_plan_copy)}\n\n"
+                except asyncio.TimeoutError:
+                    yield ": keep-alive\n\n"
         finally:
             remove_subscriber(queue)
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"}
+    )
 
 @app.get("/history")
 async def history(skip: int = 0, limit: int = 50, stock_name: Optional[str] = None, db=Depends(get_db)):
