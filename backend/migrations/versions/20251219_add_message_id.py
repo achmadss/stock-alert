@@ -1,4 +1,4 @@
-"""add message_id to trading_plans
+"""initial schema with message_id
 
 Revision ID: 001
 Revises:
@@ -9,7 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = '001'
@@ -19,19 +19,28 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # Add message_id column
-    op.add_column('trading_plans', sa.Column('message_id', sa.BigInteger(), nullable=True))
+    # Create trading_plans table with message_id from the start
+    op.create_table(
+        'trading_plans',
+        sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column('message_id', sa.BigInteger(), nullable=False),
+        sa.Column('datetime', sa.DateTime(), nullable=False),
+        sa.Column('name', sa.String(), nullable=False),
+        sa.Column('buy', postgresql.JSON(astext_type=sa.Text()), nullable=False),
+        sa.Column('tp', postgresql.JSON(astext_type=sa.Text()), nullable=False),
+        sa.Column('sl', sa.Integer(), nullable=False),
+        sa.PrimaryKeyConstraint('id')
+    )
 
-    # Create index
+    # Create indexes
+    op.create_index('ix_trading_plans_datetime', 'trading_plans', ['datetime'], unique=False)
     op.create_index('ix_trading_plans_message_id', 'trading_plans', ['message_id'], unique=True)
-
-    # Note: We set nullable=True first, then will set to nullable=False after data migration
-    # If table is empty or you want to drop existing data, you can make it NOT NULL immediately
 
 
 def downgrade() -> None:
-    # Drop index
+    # Drop indexes
     op.drop_index('ix_trading_plans_message_id', table_name='trading_plans')
+    op.drop_index('ix_trading_plans_datetime', table_name='trading_plans')
 
-    # Drop column
-    op.drop_column('trading_plans', 'message_id')
+    # Drop table
+    op.drop_table('trading_plans')
