@@ -10,6 +10,8 @@ const state = {
     favorites: new Set(),
     favoriteUpdates: new Map(), // key: stock name, value: array of latest 2 updates
     eventSources: new Map(), // key: stock name, value: EventSource
+    reconnectTimers: new Map(), // key: connection name, value: timeout ID
+    isReconnecting: new Map(), // key: connection name, value: boolean
 };
 
 // Initialize app
@@ -64,7 +66,14 @@ function setupEventListeners() {
 
 // Connect to SSE stream for all stocks
 function connectToAllStocksStream() {
+    const connectionName = '__all_stocks__';
     const statusEl = document.getElementById('leftStatus');
+
+    // Prevent multiple reconnection attempts
+    if (state.isReconnecting.get(connectionName)) {
+        return;
+    }
+
     updateConnectionStatus(statusEl, 'connecting');
 
     const eventSource = new EventSource(`${API_BASE_URL}/alert`);
@@ -72,6 +81,7 @@ function connectToAllStocksStream() {
     eventSource.onopen = () => {
         console.log('Connected to all stocks stream');
         updateConnectionStatus(statusEl, 'connected');
+        state.isReconnecting.set(connectionName, false);
     };
 
     eventSource.onmessage = (event) => {
@@ -86,12 +96,27 @@ function connectToAllStocksStream() {
     eventSource.onerror = (error) => {
         console.error('SSE connection error:', error);
         updateConnectionStatus(statusEl, 'error');
+        eventSource.close();
 
-        // Attempt to reconnect after 5 seconds
-        setTimeout(() => {
-            eventSource.close();
+        // Prevent multiple reconnection timers
+        if (state.isReconnecting.get(connectionName)) {
+            return;
+        }
+
+        state.isReconnecting.set(connectionName, true);
+
+        // Clear any existing reconnect timer
+        if (state.reconnectTimers.has(connectionName)) {
+            clearTimeout(state.reconnectTimers.get(connectionName));
+        }
+
+        // Attempt to reconnect after 1 second
+        const timer = setTimeout(() => {
+            state.reconnectTimers.delete(connectionName);
             connectToAllStocksStream();
-        }, 5000);
+        }, 1000);
+
+        state.reconnectTimers.set(connectionName, timer);
     };
 }
 
@@ -101,10 +126,16 @@ function connectToFavoriteStream(stockName) {
         return; // Already connected
     }
 
+    // Prevent multiple reconnection attempts
+    if (state.isReconnecting.get(stockName)) {
+        return;
+    }
+
     const eventSource = new EventSource(`${API_BASE_URL}/alert/${stockName}`);
 
     eventSource.onopen = () => {
         console.log(`Connected to ${stockName} stream`);
+        state.isReconnecting.set(stockName, false);
     };
 
     eventSource.onmessage = (event) => {
@@ -118,15 +149,35 @@ function connectToFavoriteStream(stockName) {
 
     eventSource.onerror = (error) => {
         console.error(`SSE connection error for ${stockName}:`, error);
+        eventSource.close();
+        state.eventSources.delete(stockName);
 
-        // Attempt to reconnect after 5 seconds
-        setTimeout(() => {
+        // Only reconnect if still in favorites
+        if (!state.favorites.has(stockName)) {
+            return;
+        }
+
+        // Prevent multiple reconnection timers
+        if (state.isReconnecting.get(stockName)) {
+            return;
+        }
+
+        state.isReconnecting.set(stockName, true);
+
+        // Clear any existing reconnect timer
+        if (state.reconnectTimers.has(stockName)) {
+            clearTimeout(state.reconnectTimers.get(stockName));
+        }
+
+        // Attempt to reconnect after 1 second
+        const timer = setTimeout(() => {
+            state.reconnectTimers.delete(stockName);
             if (state.favorites.has(stockName)) {
-                eventSource.close();
-                state.eventSources.delete(stockName);
                 connectToFavoriteStream(stockName);
             }
-        }, 5000);
+        }, 1000);
+
+        state.reconnectTimers.set(stockName, timer);
     };
 
     state.eventSources.set(stockName, eventSource);
