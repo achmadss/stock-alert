@@ -9,8 +9,35 @@ from typing import Optional
 import json
 from alembic.config import Config
 from alembic import command
-import os
+import sys
 
+
+def run_migrations():
+    """Run Alembic migrations before starting the app."""
+    try:
+        print("=" * 50)
+        print("Running database migrations...")
+        print("=" * 50)
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
+        print("=" * 50)
+        print("✓ Migrations completed successfully")
+        print("=" * 50)
+    except Exception as e:
+        print("=" * 50)
+        print(f"✗ MIGRATION FAILED: {e}")
+        print("=" * 50)
+        print("Cannot start application without successful migrations.")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+
+
+# Run migrations BEFORE creating FastAPI app
+print("Initializing Stock Alert Backend...")
+run_migrations()
+
+# Now create the app
 app = FastAPI()
 
 # CORS configuration for production
@@ -28,22 +55,11 @@ app.add_middleware(
 listener_task = None
 
 
-def run_migrations():
-    """Run Alembic migrations on startup."""
-    print("Running database migrations...")
-    alembic_cfg = Config("alembic.ini")
-    command.upgrade(alembic_cfg, "head")
-    print("Migrations completed successfully")
-
-
 @app.on_event("startup")
 async def startup_event():
     global listener_task
 
-    # Run migrations first
-    run_migrations()
-
-    # Create tables (Alembic handles schema, this is for safety)
+    # Create tables (migrations already ran)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
@@ -59,7 +75,9 @@ async def startup_event():
             traceback.print_exc()
 
     listener_task = asyncio.create_task(run_listener())
-    print("Listener task started")
+    print("=" * 50)
+    print("✓ Backend started successfully")
+    print("=" * 50)
 
 @app.get("/alert")
 async def alert():
