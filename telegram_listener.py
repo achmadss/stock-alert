@@ -9,9 +9,19 @@ from sqlalchemy import select
 
 load_dotenv()
 
-API_ID = int(os.getenv('API_ID'))
+API_ID_STR = os.getenv('API_ID')
+if API_ID_STR is None:
+    raise ValueError("API_ID environment variable is not set")
+API_ID = int(API_ID_STR)
+
 API_HASH = os.getenv('API_HASH')
-CHANNEL_ID = int(os.getenv('CHANNEL_ID'))
+if API_HASH is None:
+    raise ValueError("API_HASH environment variable is not set")
+
+CHANNEL_ID_STR = os.getenv('CHANNEL_ID')
+if CHANNEL_ID_STR is None:
+    raise ValueError("CHANNEL_ID environment variable is not set")
+CHANNEL_ID = int(CHANNEL_ID_STR)
 
 client = TelegramClient('api', API_ID, API_HASH)
 
@@ -66,14 +76,15 @@ async def save_message(msg):
 async def fetch_historical():
     channel = await client.get_entity(CHANNEL_ID)
     messages = await client.get_messages(channel, limit=100)  # Adjust limit
-    for msg in reversed(messages):  # Oldest first
-        await save_message(msg)
+    if messages and isinstance(messages, list):
+        for msg in reversed(messages):  # Oldest first
+            await save_message(msg)
 
 @client.on(events.NewMessage(chats=CHANNEL_ID))
 async def new_message_handler(event):
     await save_message(event.message)
 
 async def start_listener():
-    await client.start()
+    await client.start()  # type: ignore
     await fetch_historical()
-    await client.run_until_disconnected()
+    await client.run_until_disconnected()  # type: ignore
