@@ -43,7 +43,7 @@ async def broadcast_trading_plan(parsed):
     for queue in subscribers:
         await queue.put(parsed)
 
-def parse_trading_plan(text):
+def parse_trading_plan(text, message_id):
     """Parse trading plan message and extract relevant data."""
     lines = text.split('\n')
     if len(lines) < 5:
@@ -73,6 +73,7 @@ def parse_trading_plan(text):
     sl = int(sl_line.split(':')[1].strip())
 
     return {
+        'message_id': message_id,
         'datetime': dt,
         'name': name,
         'buy': buy,
@@ -85,18 +86,19 @@ async def save_message(msg):
     if not msg.text or 'Trading Plan' not in msg.text:
         return
 
-    parsed = parse_trading_plan(msg.text)
+    parsed = parse_trading_plan(msg.text, msg.id)
     if not parsed:
         return
 
     async with async_session() as session:
+        # Check if message_id already exists (primary duplicate check)
         result = await session.execute(
             select(TradingPlan).where(
-                TradingPlan.datetime == parsed['datetime'],
-                TradingPlan.name == parsed['name']
+                TradingPlan.message_id == parsed['message_id']
             )
         )
         if result.scalar_one_or_none():
+            print(f"Duplicate message_id {parsed['message_id']} - skipping")
             return
 
         trading_plan = TradingPlan(**parsed)

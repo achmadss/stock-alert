@@ -15,10 +15,18 @@ const state = {
 };
 
 // Initialize app
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     loadFavoritesFromStorage();
-    connectToAllStocksStream();
     setupEventListeners();
+
+    // Load historical data first
+    await loadHistoricalData();
+
+    // Then connect to real-time updates
+    connectToAllStocksStream();
+
+    // Load favorites data and render
+    await loadFavoritesData();
     renderFavorites();
 });
 
@@ -74,7 +82,8 @@ function connectToAllStocksStream() {
         return;
     }
 
-    updateConnectionStatus(statusEl, 'connecting');
+    // Don't update status if we're first connecting (status already set by loadHistoricalData)
+    // Only update on reconnects
 
     const eventSource = new EventSource(`${API_BASE_URL}/alert`);
 
@@ -183,6 +192,68 @@ function connectToFavoriteStream(stockName) {
     state.eventSources.set(stockName, eventSource);
 }
 
+// Load historical data on page load
+async function loadHistoricalData() {
+    const statusEl = document.getElementById('leftStatus');
+    updateConnectionStatus(statusEl, 'connecting');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/history?limit=50`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+
+        // Process historical data
+        data.trading_plans.forEach(plan => {
+            const stockName = plan.name.toUpperCase();
+
+            if (!state.allStocks.has(stockName)) {
+                state.allStocks.set(stockName, []);
+            }
+
+            // Add to all stocks (use message_id to check duplicates)
+            const existing = state.allStocks.get(stockName).find(
+                item => item.message_id === plan.message_id
+            );
+            if (!existing) {
+                state.allStocks.get(stockName).push(plan);
+            }
+        });
+
+        // Render initial data
+        renderAllStocks();
+
+        // Update status to show we're ready for real-time
+        const statusText = statusEl.querySelector('.status-text');
+        statusText.textContent = 'Connecting to live stream...';
+    } catch (error) {
+        console.error('Error loading historical data:', error);
+        updateConnectionStatus(statusEl, 'error');
+    }
+}
+
+// Load historical data for favorites
+async function loadFavoritesData() {
+    const promises = [...state.favorites].map(async (stockName) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/history?stock_name=${stockName}&limit=2`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+
+            if (data.trading_plans.length > 0) {
+                state.favoriteUpdates.set(stockName, data.trading_plans);
+            }
+        } catch (error) {
+            console.error(`Error loading data for ${stockName}:`, error);
+        }
+    });
+
+    await Promise.all(promises);
+}
+
 // Handle new stock update from all stocks stream
 function handleNewStockUpdate(stockData) {
     const stockName = stockData.name.toUpperCase();
@@ -191,6 +262,16 @@ function handleNewStockUpdate(stockData) {
     if (!state.allStocks.has(stockName)) {
         state.allStocks.set(stockName, []);
     }
+
+    // Check for duplicates using message_id
+    const existing = state.allStocks.get(stockName).find(
+        item => item.message_id === stockData.message_id
+    );
+    if (existing) {
+        console.log(`Duplicate message_id ${stockData.message_id} - skipping render`);
+        return;
+    }
+
     state.allStocks.get(stockName).unshift(stockData);
 
     // Keep only latest 50 updates per stock
@@ -214,6 +295,14 @@ function handleFavoriteUpdate(stockData) {
     }
 
     const updates = state.favoriteUpdates.get(stockName);
+
+    // Check for duplicates using message_id
+    const existing = updates.find(item => item.message_id === stockData.message_id);
+    if (existing) {
+        console.log(`Duplicate favorite message_id ${stockData.message_id} for ${stockName} - skipping`);
+        return;
+    }
+
     updates.unshift(stockData);
 
     // Keep only latest 2 updates
@@ -225,7 +314,7 @@ function handleFavoriteUpdate(stockData) {
 }
 
 // Add a stock to favorites
-function addFavorite(stockName) {
+async function addFavorite(stockName) {
     if (state.favorites.has(stockName)) {
         alert(`${stockName} is already in favorites`);
         return;
@@ -234,6 +323,20 @@ function addFavorite(stockName) {
     state.favorites.add(stockName);
     state.favoriteUpdates.set(stockName, []);
     saveFavoritesToStorage();
+
+    // Load historical data for this stock
+    try {
+        const response = await fetch(`${API_BASE_URL}/history?stock_name=${stockName}&limit=2`);
+        if (response.ok) {
+            const data = await response.json();
+            if (data.trading_plans.length > 0) {
+                state.favoriteUpdates.set(stockName, data.trading_plans);
+            }
+        }
+    } catch (error) {
+        console.error(`Error loading history for ${stockName}:`, error);
+    }
+
     connectToFavoriteStream(stockName);
     renderFavorites();
 }

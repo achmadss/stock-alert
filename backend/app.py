@@ -7,6 +7,9 @@ from models import TradingPlan, Base
 from telegram_listener import add_subscriber, remove_subscriber, get_channels
 from typing import Optional
 import json
+from alembic.config import Config
+from alembic import command
+import os
 
 app = FastAPI()
 
@@ -24,10 +27,23 @@ app.add_middleware(
 
 listener_task = None
 
+
+def run_migrations():
+    """Run Alembic migrations on startup."""
+    print("Running database migrations...")
+    alembic_cfg = Config("alembic.ini")
+    command.upgrade(alembic_cfg, "head")
+    print("Migrations completed successfully")
+
+
 @app.on_event("startup")
 async def startup_event():
     global listener_task
 
+    # Run migrations first
+    run_migrations()
+
+    # Create tables (Alembic handles schema, this is for safety)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
@@ -95,6 +111,7 @@ async def history(skip: int = 0, limit: int = 50, stock_name: Optional[str] = No
     return {
         "trading_plans": [
             {
+                "message_id": tp.message_id,
                 "datetime": tp.datetime.isoformat(),
                 "name": tp.name,
                 "buy": tp.buy,
