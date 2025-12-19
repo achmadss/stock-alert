@@ -1,0 +1,14 @@
+:3000 {
+    root * public
+    file_server
+
+    # Enable CORS for API requests to backend
+    header {
+        Access-Control-Allow-Origin *
+        Access-Control-Allow-Methods "GET, POST, OPTIONS"
+        Access-Control-Allow-Headers "Content-Type"
+    }
+
+    # SPA fallback - serve index.html for all routes
+    try_files {path} /index.html
+}

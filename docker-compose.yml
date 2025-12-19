@@ -1,0 +1,56 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: stock-alert-db
+    environment:
+      POSTGRES_DB: stock_alert
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d stock_alert"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - stock-alert-network
+
+  # Backend API
+  backend:
+    build: ./backend
+    container_name: stock-alert-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend/api.session:/app/api.session
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - stock-alert-network
+    restart: unless-stopped
+
+  # Frontend
+  frontend:
+    build: ./frontend
+    container_name: stock-alert-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - stock-alert-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  stock-alert-network:
+    driver: bridge

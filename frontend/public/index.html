@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Alert Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Left Panel: All Stock Updates -->
+        <div class="panel left-panel">
+            <div class="panel-header">
+                <h2>All Stock Updates</h2>
+                <div class="connection-status" id="leftStatus">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Connecting...</span>
+                </div>
+            </div>
+            <div class="panel-content" id="allStocks">
+                <!-- Stock cards will be inserted here -->
+            </div>
+        </div>
+
+        <!-- Right Panel: Favorited Stocks -->
+        <div class="panel right-panel">
+            <div class="panel-header">
+                <h2>Favorite Stocks</h2>
+                <div class="connection-status" id="rightStatus">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Ready</span>
+                </div>
+            </div>
+            <div class="favorites-controls">
+                <input type="text" id="favoriteInput" placeholder="Add stock symbol (e.g., MPIX)" />
+                <button id="addFavoriteBtn">Add Favorite</button>
+            </div>
+            <div class="panel-content" id="favoriteStocks">
+                <div class="empty-state">
+                    <p>No favorites yet. Add a stock symbol above to track it.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
