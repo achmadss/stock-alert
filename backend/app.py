@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from database import get_db, engine
@@ -8,6 +9,18 @@ from typing import Optional
 import json
 
 app = FastAPI()
+
+# CORS configuration for production
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",           # Local development
+        "https://stock.achmad.dev",        # Production frontend
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 listener_task = None
 

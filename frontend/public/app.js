@@ -1,5 +1,8 @@
 // Configuration
-const API_BASE_URL = 'http://localhost:8000';
+// Use environment-based API URL (production vs development)
+const API_BASE_URL = window.location.hostname === 'localhost'
+    ? 'http://localhost:8000'
+    : 'https://stock-api.achmad.dev';
 
 // State management
 const state = {
