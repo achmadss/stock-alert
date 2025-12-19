@@ -1,10 +1,10 @@
 import asyncio
-import json
-from telethon import TelegramClient, events
+from telethon import TelegramClient
 from dotenv import load_dotenv
 import os
+from datetime import datetime
 from database import async_session
-from models import Message
+from models import TradingPlan
 from sqlalchemy import select
 
 load_dotenv()
@@ -25,62 +25,95 @@ CHANNEL_ID = int(CHANNEL_ID_STR)
 
 client = TelegramClient('api', API_ID, API_HASH)
 
-# Queue for SSE
-message_queue = asyncio.Queue()
+subscribers = []
+
+def add_subscriber():
+    """Create and register a new subscriber queue."""
+    queue = asyncio.Queue()
+    subscribers.append(queue)
+    return queue
+
+def remove_subscriber(queue):
+    """Remove a subscriber queue."""
+    if queue in subscribers:
+        subscribers.remove(queue)
+
+async def broadcast_trading_plan(parsed):
+    """Broadcast trading plan to all subscribers."""
+    for queue in subscribers:
+        await queue.put(parsed)
+
+def parse_trading_plan(text):
+    """Parse trading plan message and extract relevant data."""
+    lines = text.split('\n')
+    if len(lines) < 5:
+        return None
+
+    date_str = lines[0].strip('[]')
+    dt = datetime.strptime(date_str, '%d/%m/%Y %H:%M:%S')
+
+    name_line = lines[1]
+    if 'Trading Plan' not in name_line:
+        return None
+    name = name_line.split('Trading Plan ')[1].split(' [Sy]:')[0].rstrip(':').strip()
+
+    buy_line = next((l for l in lines if l.startswith('📝 Buy:')), None)
+    if not buy_line:
+        return None
+    buy = [int(x.strip()) for x in buy_line.split(':')[1].split(',')]
+
+    tp_line = next((l for l in lines if l.startswith('🟢 TP:')), None)
+    if not tp_line:
+        return None
+    tp = [int(x.strip()) for x in tp_line.split(':')[1].split(',')]
+
+    sl_line = next((l for l in lines if l.startswith('🔴 SL:')), None)
+    if not sl_line:
+        return None
+    sl = int(sl_line.split(':')[1].strip())
+
+    return {
+        'datetime': dt,
+        'name': name,
+        'buy': buy,
+        'tp': tp,
+        'sl': sl
+    }
 
 async def save_message(msg):
+    """Parse and save trading plan from telegram message."""
+    if not msg.text or 'Trading Plan' not in msg.text:
+        return
+
+    parsed = parse_trading_plan(msg.text)
+    if not parsed:
+        return
+
     async with async_session() as session:
-        # Check if exists
-        result = await session.execute(select(Message).where(Message.id == msg.id))
+        result = await session.execute(
+            select(TradingPlan).where(
+                TradingPlan.datetime == parsed['datetime'],
+                TradingPlan.name == parsed['name']
+            )
+        )
         if result.scalar_one_or_none():
-            return  # Already exists
+            return
 
-        # Create message dict
-        message_data = {
-            'id': msg.id,
-            'chat_id': msg.chat_id,
-            'sender_id': msg.sender_id,
-            'text': msg.text,
-            'date': msg.date.replace(tzinfo=None) if msg.date else None,
-            'raw_text': msg.raw_text,
-            'is_reply': msg.reply_to_msg_id,
-            'forward': json.dumps(msg.forward.to_dict()) if msg.forward else None,
-            'buttons': json.dumps([btn.to_dict() for btn in msg.buttons]) if msg.buttons else None,
-            'file': json.dumps(msg.file.to_dict()) if msg.file else None,
-            'photo': json.dumps(msg.photo.to_dict()) if msg.photo else None,
-            'document': json.dumps(msg.document.to_dict()) if msg.document else None,
-            'audio': json.dumps(msg.audio.to_dict()) if msg.audio else None,
-            'voice': json.dumps(msg.voice.to_dict()) if msg.voice else None,
-            'video': json.dumps(msg.video.to_dict()) if msg.video else None,
-            'video_note': json.dumps(msg.video_note.to_dict()) if msg.video_note else None,
-            'gif': json.dumps(msg.gif.to_dict()) if msg.gif else None,
-            'sticker': json.dumps(msg.sticker.to_dict()) if msg.sticker else None,
-            'contact': json.dumps(msg.contact.to_dict()) if msg.contact else None,
-            'game': json.dumps(msg.game.to_dict()) if msg.game else None,
-            'geo': json.dumps(msg.geo.to_dict()) if msg.geo else None,
-            'invoice': json.dumps(msg.invoice.to_dict()) if msg.invoice else None,
-            'poll': json.dumps(msg.poll.to_dict()) if msg.poll else None,
-            'venue': json.dumps(msg.venue.to_dict()) if msg.venue else None,
-            'action_entities': json.dumps([e.to_dict() for e in msg.action_entities]) if msg.action_entities else None,
-            'via_bot': msg.via_bot_id,
-            'via_input_bot': msg.via_input_bot.to_dict() if msg.via_input_bot else None,
-        }
-
-        db_message = Message(**message_data)
-        session.add(db_message)
+        trading_plan = TradingPlan(**parsed)
+        session.add(trading_plan)
         await session.commit()
 
-        # Put in queue for SSE
-        await message_queue.put(message_data)
+        await broadcast_trading_plan(parsed)
 
 async def fetch_historical():
+    """Fetch historical messages from the channel."""
     try:
         print("=== FETCH HISTORY ===")
         channel = await client.get_entity(CHANNEL_ID)
-        messages = await client.get_messages(channel, limit=100)  # Adjust limit
-        print(messages)
+        messages = await client.get_messages(channel, limit=100)
+
         if messages and isinstance(messages, list):
-            for msg in reversed(messages):  # Oldest first
+            for msg in reversed(messages):
                 await save_message(msg)
     except Exception as e:
         print(f"Error fetching historical messages: {e}")
@@ -91,9 +124,11 @@ async def fetch_historical():
         print("Note: You need to be a member of the channel to fetch messages.")
 
 async def new_message_handler(event):
+    """Handle new messages from the channel."""
     await save_message(event.message)
 
 async def get_channels():
+    """Get list of available channels."""
     dialogs = await client.get_dialogs()
     channels = []
     for dialog in dialogs:
@@ -105,9 +140,10 @@ async def get_channels():
     return channels
 
 async def start_listener():
+    """Start the telegram listener."""
     print("Starting Telegram listener...")
-    await client.start()  # type: ignore
+    await client.start()
     print("Telegram client started successfully")
     await fetch_historical()
     print("Fetch historical completed, now listening for new messages...")
-    await client.run_until_disconnected()  # type: ignore
+    await client.run_until_disconnected()

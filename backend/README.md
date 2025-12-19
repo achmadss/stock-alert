@@ -1,18 +1,47 @@
 # Stock Alert
 
-A simple service that monitors a Telegram channel and provides real-time alerts through a REST API.
+A service that monitors a Telegram channel for trading plan messages and provides real-time alerts through a REST API.
 
 ## What It Is
 
-This project listens to messages from a specific Telegram channel, saves them to a database, and makes them available through an API. It's useful for tracking announcements, alerts, or updates from Telegram channels in real-time.
+This project listens to trading plan messages from a Telegram channel, parses the key information (stock name, buy prices, take profit, stop loss), saves it to a database, and makes it available through an API. Perfect for tracking stock trading signals in real-time.
 
 ## How It Works
 
 1. The service connects to Telegram using the Telethon library
-2. It monitors a specified channel for new messages
-3. When a message arrives, it's saved to a PostgreSQL database
-4. The message is also pushed to a real-time event stream
-5. You can fetch messages either in real-time (as they arrive) or from the history
+2. It monitors a specified channel for new trading plan messages
+3. When a trading plan arrives, it parses the message to extract:
+   - Date/Time
+   - Stock Name (e.g., MPIX, OPMS)
+   - Buy prices
+   - Take Profit (TP) levels
+   - Stop Loss (SL) level
+4. Saves the parsed data to PostgreSQL database
+5. Broadcasts to all connected clients via Server-Sent Events (SSE)
+6. You can get alerts in real-time or fetch historical trading plans
+
+## Trading Plan Format
+
+The service expects Telegram messages in this format:
+```
+[19/12/2025 14:30:00]
+Trading Plan MPIX [Sy]:
+
+📝 Buy: 100, 95, 90
+🟢 TP: 120, 130, 140
+🔴 SL: 85
+```
+
+The parsed data will be:
+```json
+{
+  "datetime": "2025-12-19T14:30:00",
+  "name": "MPIX",
+  "buy": [100, 95, 90],
+  "tp": [120, 130, 140],
+  "sl": 85
+}
+```
 
 ## Setup
 
@@ -42,85 +71,148 @@ CHANNEL_ID=your_channel_id
 uvicorn app:app --host 0.0.0.0 --port 8000
 ```
 
-## API Usage
-
-The service provides two endpoints:
+## API Endpoints
 
 ### GET /alert
 
-Provides real-time message alerts using Server-Sent Events (SSE).
+Stream all trading plan alerts in real-time using Server-Sent Events (SSE).
 
-**How to use:**
+**Usage:**
 ```bash
 curl -N http://localhost:8000/alert
 ```
 
-This keeps the connection open and streams new messages as they arrive. Each message is sent as JSON data.
-
-**Response format:**
-```
-data: {"id": 123, "text": "New alert message", "date": "2025-12-19T...", ...}
-```
-
-You can consume this in your application using EventSource in JavaScript:
+**JavaScript example:**
 ```javascript
 const eventSource = new EventSource('http://localhost:8000/alert');
 eventSource.onmessage = (event) => {
-    const message = JSON.parse(event.data);
-    console.log('New alert:', message);
+    const tradingPlan = JSON.parse(event.data);
+    console.log('New trading plan:', tradingPlan);
 };
 ```
 
+**Response format:**
+```
+data: {"datetime": "2025-12-19T14:30:00", "name": "MPIX", "buy": [100, 95], "tp": [120, 130], "sl": 85}
+```
+
+### GET /alert/{stock_name}
+
+Stream trading plan alerts for a specific stock (case-insensitive).
+
+**Usage:**
+```bash
+# Get only MPIX alerts
+curl -N http://localhost:8000/alert/MPIX
+
+# Get only OPMS alerts (case doesn't matter)
+curl -N http://localhost:8000/alert/opms
+```
+
+This keeps the connection open and only sends trading plans for the specified stock.
+
 ### GET /history
 
-Retrieves past messages from the database.
+Retrieve historical trading plans from the database.
 
 **Parameters:**
-- `skip` (optional): Number of messages to skip (default: 0)
-- `limit` (optional): Maximum number of messages to return (default: 50)
+- `skip` (optional): Number of records to skip (default: 0)
+- `limit` (optional): Maximum number of records to return (default: 50)
+- `stock_name` (optional): Filter by stock name (case-insensitive)
 
-**How to use:**
+**Usage:**
 ```bash
-# Get the first 50 messages
+# Get the latest 50 trading plans
 curl http://localhost:8000/history
 
-# Get the next 50 messages (skip first 50)
-curl http://localhost:8000/history?skip=50&limit=50
+# Get trading plans for MPIX only
+curl http://localhost:8000/history?stock_name=MPIX
 
-# Get only 10 messages
-curl http://localhost:8000/history?limit=10
+# Get OPMS trading plans with pagination
+curl http://localhost:8000/history?stock_name=OPMS&skip=10&limit=20
+
+# Pagination
+curl http://localhost:8000/history?skip=50&limit=50
 ```
 
 **Response format:**
 ```json
 {
-  "messages": [
+  "trading_plans": [
     {
-      "id": 123,
-      "chat_id": 456,
-      "text": "Message content",
-      "date": "2025-12-19T10:30:00",
-      "sender_id": 789,
-      "raw_text": "Message content",
-      ...
+      "datetime": "2025-12-19T14:30:00",
+      "name": "MPIX",
+      "buy": [100, 95, 90],
+      "tp": [120, 130, 140],
+      "sl": 85
+    },
+    {
+      "datetime": "2025-12-19T10:15:00",
+      "name": "OPMS",
+      "buy": [200, 195],
+      "tp": [220, 230],
+      "sl": 180
     }
   ]
 }
 ```
 
-## Message Fields
+### GET /channels
 
-Each message contains:
-- `id`: Unique message ID
-- `chat_id`: ID of the channel
-- `sender_id`: ID of the message sender
-- `text`: Message text content
-- `date`: When the message was sent
-- `raw_text`: Raw text without formatting
-- `is_reply`: ID of the message this is replying to (if any)
-- `forward`: Information about forwarded messages
-- `buttons`: Any inline buttons in the message
-- `file`, `photo`, `video`, etc.: Media attachments (stored as JSON)
+Get a list of available Telegram channels the client has access to.
+
+**Usage:**
+```bash
+curl http://localhost:8000/channels
+```
+
+**Response format:**
+```json
+{
+  "channels": [
+    {
+      "id": -1001234567890,
+      "name": "Trading Signals"
+    }
+  ]
+}
+```
+
+## Database Schema
+
+The `trading_plans` table stores:
+- `id`: Auto-incrementing primary key
+- `datetime`: When the trading plan was published
+- `name`: Stock name (e.g., "MPIX", "OPMS")
+- `buy`: JSON array of buy prices
+- `tp`: JSON array of take profit levels
+- `sl`: Stop loss level
+
+## Features
+
+- **Real-time streaming**: Get alerts instantly as they arrive via SSE
+- **Stock filtering**: Subscribe to specific stocks only
+- **Case-insensitive**: Search for "MPIX", "mpix", or "Mpix" - all work the same
+- **Historical data**: Query past trading plans with pagination
+- **Clean data**: Only stores essential trading information, not entire telegram messages
+- **Multiple clients**: Supports multiple concurrent connections using pub/sub pattern
+- **Auto-cleanup**: Removes trailing colons and whitespace from stock names
+
+## Architecture
+
+```
+Telegram Channel
+       ↓
+telegram_listener.py (monitors and parses messages)
+       ↓
+PostgreSQL (stores trading plans)
+       ↓
+pub/sub broadcaster
+       ↓
+FastAPI endpoints (serves data via REST/SSE)
+       ↓
+Clients (web, mobile, etc.)
+```
 
 ## Running with Docker
 
