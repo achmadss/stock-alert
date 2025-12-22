@@ -87,7 +87,8 @@ body {
     border-bottom: 1px solid #3e3e42;
 }
 
-#searchInput {
+#leftSearchInput,
+#rightSearchInput {
     width: 100%;
     padding: 11px 15px;
     background: #3c3c3c;
@@ -99,11 +100,13 @@ body {
     transition: all 0.2s;
 }
 
-#searchInput::placeholder {
+#leftSearchInput::placeholder,
+#rightSearchInput::placeholder {
     color: #6a6a6a;
 }
 
-#searchInput:focus {
+#leftSearchInput:focus,
+#rightSearchInput:focus {
     outline: none;
     background: #404040;
     border-color: #007acc;
