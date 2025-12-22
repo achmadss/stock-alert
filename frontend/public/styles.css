@@ -584,9 +584,13 @@ body {
     color: #d4d4d4;
 }
 
+.right-panel .stock-table tbody td {
+    padding: 6px 8px;
+}
+
 .stock-table tbody td.trend-cell {
     text-align: center;
-    font-size: 14px;
+    font-size: 12px;
     width: 30px;
     min-width: 30px;
     padding: 8px 4px;
