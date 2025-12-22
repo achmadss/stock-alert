@@ -15,11 +15,12 @@ body {
 
 .container {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 20% 1fr;
     gap: 20px;
-    max-width: 1600px;
+    max-width: 100%;
     margin: 0 auto;
     height: calc(100vh - 40px);
+    padding: 0 20px;
 }
 
 .panel {
@@ -119,6 +120,13 @@ body {
     padding: 24px;
 }
 
+.right-panel .panel-content {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    align-content: start;
+}
+
 .panel-content::-webkit-scrollbar {
     width: 10px;
 }
@@ -145,6 +153,10 @@ body {
     text-align: center;
     padding: 40px;
     font-size: 15px;
+}
+
+.right-panel .empty-state {
+    grid-column: 1 / -1;
 }
 
 .stock-card {
@@ -454,6 +466,18 @@ body {
     color: #858585;
 }
 
+@media (max-width: 1600px) {
+    .right-panel .panel-content {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 1200px) {
+    .right-panel .panel-content {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
 @media (max-width: 1024px) {
     .container {
         grid-template-columns: 1fr;
@@ -462,5 +486,15 @@ body {
 
     .panel {
         min-height: 500px;
+    }
+
+    .right-panel .panel-content {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .right-panel .panel-content {
+        grid-template-columns: 1fr;
     }
 }
