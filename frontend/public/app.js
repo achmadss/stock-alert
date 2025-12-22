@@ -325,6 +325,31 @@ function handleNewStockUpdate(stockData) {
         state.allStocks.get(stockName).pop();
     }
 
+    // Also update favorites if this stock is favorited
+    if (state.favorites.has(stockName)) {
+        if (!state.favoriteUpdates.has(stockName)) {
+            state.favoriteUpdates.set(stockName, []);
+        }
+
+        const favoriteList = state.favoriteUpdates.get(stockName);
+
+        // Check for duplicates in favorites
+        const existingInFavorites = favoriteList.find(
+            item => item.message_id === stockData.message_id
+        );
+
+        if (!existingInFavorites) {
+            favoriteList.unshift(stockData);
+
+            // Keep only latest 2 updates
+            if (favoriteList.length > 2) {
+                favoriteList.length = 2;
+            }
+
+            renderFavorites();
+        }
+    }
+
     renderAllStocks();
 }
 
@@ -568,7 +593,7 @@ function createFavoriteCard(currentData, previousData, stockName) {
     const trend = previousData ? getBuyTrend(currentData.buy, previousData.buy) : null;
     const trendHTML = renderTrendIndicator(trend);
 
-    // Helper function to create value display with change indicator
+    // Helper function to create value display with change indicator (strikethrough only)
     const createValueWithChange = (currentVal, prevVal, isArray = true) => {
         if (!prevVal) {
             return isArray ? currentVal.join(', ') : currentVal;
@@ -581,15 +606,9 @@ function createFavoriteCard(currentData, previousData, stockName) {
             return isArray ? currentVal.join(', ') : currentVal;
         }
 
-        const arrow = current > prev ? '↗' : '↘';
-        const arrowClass = current > prev ? 'up' : 'down';
-
         return `
             <div class="value-change-vertical">
-                <div class="current-value-row">
-                    <span class="current-value">${isArray ? currentVal.join(', ') : currentVal}</span>
-                    <span class="change-arrow ${arrowClass}">${arrow}</span>
-                </div>
+                <div class="current-value">${isArray ? currentVal.join(', ') : currentVal}</div>
                 <div class="previous-value">${isArray ? prevVal.join(', ') : prevVal}</div>
             </div>
         `;
