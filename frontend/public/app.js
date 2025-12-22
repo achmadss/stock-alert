@@ -58,10 +58,17 @@ function saveFavoritesToStorage() {
 function setupEventListeners() {
     const input = document.getElementById('searchInput');
 
+    if (!input) {
+        console.error('Search input element not found!');
+        return;
+    }
+
     input.addEventListener('input', (e) => {
         const searchTerm = e.target.value.trim().toUpperCase();
         filterStocks(searchTerm);
     });
+
+    console.log('Event listeners set up successfully');
 }
 
 // Filter stocks based on search term
@@ -83,8 +90,11 @@ function connectToAllStocksStream() {
     const connectionName = '__all_stocks__';
     const statusEl = document.getElementById('leftStatus');
 
+    console.log('Attempting to connect to SSE stream:', `${API_BASE_URL}/alert`);
+
     // Prevent multiple reconnection attempts
     if (state.isReconnecting.get(connectionName)) {
+        console.log('Already reconnecting, skipping...');
         return;
     }
 
@@ -92,6 +102,7 @@ function connectToAllStocksStream() {
     // Only update on reconnects
 
     const eventSource = new EventSource(`${API_BASE_URL}/alert`);
+    console.log('EventSource created');
 
     eventSource.onopen = () => {
         console.log('Connected to all stocks stream');
@@ -204,14 +215,15 @@ async function loadHistoricalData() {
     updateConnectionStatus(statusEl, 'connecting');
 
     try {
-        console.log('Fetching historical data from:', `${API_BASE_URL}/history?limit=50`);
-        const response = await fetch(`${API_BASE_URL}/history?limit=50`);
+        const url = `${API_BASE_URL}/history?limit=50`;
+        console.log('Fetching historical data from:', url);
+        const response = await fetch(url);
         console.log('History response status:', response.status);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        console.log('History data received:', data);
+        console.log('History data received, count:', data.trading_plans?.length || 0);
 
         // Process historical data
         data.trading_plans.forEach(plan => {
