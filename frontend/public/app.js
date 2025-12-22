@@ -386,7 +386,7 @@ async function loadFavoritesData() {
 }
 
 // Handle new stock update from all stocks stream
-function handleNewStockUpdate(stockData) {
+async function handleNewStockUpdate(stockData) {
     const stockName = stockData.name.toUpperCase();
 
     // Add to all stocks map
@@ -401,6 +401,20 @@ function handleNewStockUpdate(stockData) {
     if (existing) {
         console.log(`Duplicate message_id ${stockData.message_id} - skipping render`);
         return;
+    }
+
+    // Fetch the previous update from the backend for accurate trend calculation
+    try {
+        const response = await fetch(`${API_BASE_URL}/history?stock_name=${encodeURIComponent(stockData.name)}&limit=1`);
+        if (response.ok) {
+            const data = await response.json();
+            if (data.trading_plans.length > 0 && data.trading_plans[0].previous) {
+                // Add the previous data to the new stock data
+                stockData.previous = data.trading_plans[0].previous;
+            }
+        }
+    } catch (error) {
+        console.error(`Error fetching previous data for ${stockName}:`, error);
     }
 
     state.allStocks.get(stockName).unshift(stockData);
@@ -645,9 +659,9 @@ function renderAllStocks() {
     // Get all stock updates and sort by datetime
     const allUpdates = [];
     state.allStocks.forEach((updates, stockName) => {
-        updates.forEach((update, index) => {
-            // Get previous update for trend calculation
-            const previousUpdate = updates[index + 1] || null;
+        updates.forEach((update) => {
+            // Use the 'previous' data from backend if available
+            const previousUpdate = update.previous || null;
             allUpdates.push({ update, previousUpdate });
         });
     });

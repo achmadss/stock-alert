@@ -147,18 +147,40 @@ async def history(skip: int = 0, limit: int = 50, stock_name: Optional[str] = No
     result = await db.execute(query.offset(skip).limit(limit))
     trading_plans = result.scalars().all()
 
-    return {
-        "trading_plans": [
-            {
-                "message_id": tp.message_id,
-                "datetime": tp.datetime.isoformat(),
-                "name": tp.name,
-                "buy": tp.buy,
-                "tp": tp.tp,
-                "sl": tp.sl
+    # For each trading plan, fetch the previous one for the same stock
+    enriched_plans = []
+    for tp in trading_plans:
+        # Query for the previous update of the same stock
+        prev_query = select(TradingPlan).where(
+            TradingPlan.name == tp.name,
+            TradingPlan.datetime < tp.datetime
+        ).order_by(TradingPlan.datetime.desc()).limit(1)
+
+        prev_result = await db.execute(prev_query)
+        prev_tp = prev_result.scalar_one_or_none()
+
+        plan_data = {
+            "message_id": tp.message_id,
+            "datetime": tp.datetime.isoformat(),
+            "name": tp.name,
+            "buy": tp.buy,
+            "tp": tp.tp,
+            "sl": tp.sl
+        }
+
+        if prev_tp:
+            plan_data["previous"] = {
+                "message_id": prev_tp.message_id,
+                "datetime": prev_tp.datetime.isoformat(),
+                "buy": prev_tp.buy,
+                "tp": prev_tp.tp,
+                "sl": prev_tp.sl
             }
-            for tp in trading_plans
-        ],
+
+        enriched_plans.append(plan_data)
+
+    return {
+        "trading_plans": enriched_plans,
         "skip": skip,
         "limit": limit,
         "count": len(trading_plans)
