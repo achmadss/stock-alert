@@ -374,6 +374,9 @@ async function loadFavoritesData() {
             if (data.trading_plans.length > 0) {
                 state.favoriteUpdates.set(stockName, data.trading_plans);
             }
+
+            // Connect to SSE stream for this favorite
+            connectToFavoriteStream(stockName);
         } catch (error) {
             console.error(`Error loading data for ${stockName}:`, error);
         }
