@@ -10,7 +10,7 @@ body {
     color: #d4d4d4;
     min-height: 100vh;
     padding: 20px;
-    font-size: 14px;
+    font-size: 15px;
 }
 
 .container {
@@ -43,7 +43,7 @@ body {
 }
 
 .panel-header h2 {
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 400;
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -54,7 +54,7 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 12px;
+    font-size: 13px;
     color: #858585;
 }
 
@@ -89,11 +89,11 @@ body {
 
 #searchInput {
     width: 100%;
-    padding: 10px 14px;
+    padding: 11px 15px;
     background: #3c3c3c;
     border: 1px solid #3e3e42;
     border-radius: 4px;
-    font-size: 14px;
+    font-size: 15px;
     font-family: 'Consolas', 'Courier New', monospace;
     color: #cccccc;
     transition: all 0.2s;
@@ -141,7 +141,7 @@ body {
     color: #6a6a6a;
     text-align: center;
     padding: 40px;
-    font-size: 14px;
+    font-size: 15px;
 }
 
 .stock-card {
@@ -149,8 +149,8 @@ body {
     border: 1px solid #3e3e42;
     border-left: 3px solid #007acc;
     border-radius: 4px;
-    padding: 16px 18px;
-    margin-bottom: 14px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
     transition: all 0.2s ease;
     animation: slideIn 0.3s ease;
 }
@@ -176,11 +176,11 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 14px;
+    margin-bottom: 16px;
 }
 
 .stock-name {
-    font-size: 16px;
+    font-size: 17px;
     font-weight: 600;
     color: #4ec9b0;
     display: flex;
@@ -190,7 +190,7 @@ body {
 }
 
 .trend-indicator {
-    font-size: 22px;
+    font-size: 24px;
     display: inline-flex;
     align-items: center;
     animation: fadeIn 0.3s ease;
@@ -210,34 +210,34 @@ body {
 }
 
 .stock-time {
-    font-size: 12px;
+    font-size: 13px;
     color: #858585;
 }
 
 .stock-details {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
+    gap: 14px;
 }
 
 .detail-group {
     background: #1e1e1e;
-    padding: 10px 12px;
+    padding: 11px 13px;
     border-radius: 3px;
     border: 1px solid #3e3e42;
 }
 
 .detail-label {
-    font-size: 11px;
+    font-size: 12px;
     color: #858585;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 5px;
+    margin-bottom: 6px;
     font-weight: 500;
 }
 
 .detail-value {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 500;
     color: #d4d4d4;
     font-family: 'Consolas', 'Courier New', monospace;
@@ -290,7 +290,7 @@ body {
 }
 
 .favorite-title {
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 500;
     display: flex;
     align-items: center;
@@ -303,7 +303,7 @@ body {
     background: #007acc;
     padding: 4px 9px;
     border-radius: 10px;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 500;
     color: #ffffff;
 }
@@ -312,9 +312,9 @@ body {
     background: #5a1d1d;
     color: #f48771;
     border: 1px solid #f48771;
-    padding: 6px 12px;
+    padding: 7px 13px;
     border-radius: 3px;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
@@ -332,7 +332,7 @@ body {
 
 .favorite-star {
     cursor: pointer;
-    font-size: 20px;
+    font-size: 22px;
     color: #6a6a6a;
     transition: all 0.2s;
     display: inline-flex;
@@ -374,7 +374,7 @@ body {
 }
 
 .change-arrow {
-    font-size: 15px;
+    font-size: 16px;
     font-weight: bold;
 }
 
@@ -387,14 +387,14 @@ body {
 }
 
 .previous-value {
-    font-size: 12px;
+    font-size: 13px;
     color: #6a6a6a;
     text-decoration: line-through;
     line-height: 1.3;
 }
 
 .trend-icon {
-    font-size: 13px;
+    font-size: 14px;
     margin-left: 5px;
     font-weight: bold;
 }

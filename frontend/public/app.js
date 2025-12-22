@@ -56,23 +56,34 @@ function saveFavoritesToStorage() {
 
 // Setup event listeners
 function setupEventListeners() {
-    const input = document.getElementById('searchInput');
+    const leftSearchInput = document.getElementById('leftSearchInput');
+    const rightSearchInput = document.getElementById('rightSearchInput');
 
-    if (!input) {
-        console.error('Search input element not found!');
+    if (!leftSearchInput) {
+        console.error('Left search input element not found!');
         return;
     }
 
-    input.addEventListener('input', (e) => {
+    if (!rightSearchInput) {
+        console.error('Right search input element not found!');
+        return;
+    }
+
+    leftSearchInput.addEventListener('input', (e) => {
         const searchTerm = e.target.value.trim().toUpperCase();
-        filterStocks(searchTerm);
+        filterAllStocks(searchTerm);
+    });
+
+    rightSearchInput.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.trim().toUpperCase();
+        filterFavoriteStocks(searchTerm);
     });
 
     console.log('Event listeners set up successfully');
 }
 
-// Filter stocks based on search term
-function filterStocks(searchTerm) {
+// Filter all stocks in left panel
+function filterAllStocks(searchTerm) {
     const allCards = document.querySelectorAll('#allStocks .stock-card');
 
     allCards.forEach(card => {
@@ -81,6 +92,20 @@ function filterStocks(searchTerm) {
             card.style.display = '';
         } else {
             card.style.display = 'none';
+        }
+    });
+}
+
+// Filter favorite stocks in right panel
+function filterFavoriteStocks(searchTerm) {
+    const favoriteSections = document.querySelectorAll('#favoriteStocks .favorite-section');
+
+    favoriteSections.forEach(section => {
+        const stockName = section.querySelector('.favorite-title').textContent.trim();
+        if (!searchTerm || stockName.includes(searchTerm)) {
+            section.style.display = '';
+        } else {
+            section.style.display = 'none';
         }
     });
 }
