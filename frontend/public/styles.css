@@ -318,14 +318,11 @@ body {
     color: #858585;
 }
 
-.update-details {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 4px;
-}
-
-.update-details .detail-group {
-    padding: 4px 6px;
+.update-values {
+    font-size: 12px;
+    color: #d4d4d4;
+    font-family: 'Consolas', 'Courier New', monospace;
+    margin-top: 6px;
 }
 
 .update-count {

@@ -393,19 +393,8 @@ function renderAllStocksTable() {
                     <div class="stock-name">${stockName}</div>
                     <div class="update-time">${formatDateTime(update.datetime)}</div>
                 </div>
-                <div class="update-details">
-                    <div class="detail-group buy">
-                        <div class="detail-label">BUY</div>
-                        <div class="detail-value">${update.buy.join(', ')}</div>
-                    </div>
-                    <div class="detail-group tp">
-                        <div class="detail-label">TP</div>
-                        <div class="detail-value">${update.tp.join(', ')}</div>
-                    </div>
-                    <div class="detail-group sl">
-                        <div class="detail-label">SL</div>
-                        <div class="detail-value">${update.sl}</div>
-                    </div>
+                <div class="update-values">
+                    BUY ${formatRange(update.buy)} | TP ${formatRange(update.tp)} | SL ${update.sl}
                 </div>
             </div>
         `)
