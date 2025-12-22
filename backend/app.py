@@ -87,6 +87,9 @@ async def alert():
 
     async def event_generator():
         try:
+            # Send immediate keep-alive to indicate connection established
+            yield ": connected\n\n"
+
             while True:
                 try:
                     trading_plan = await asyncio.wait_for(queue.get(), timeout=30.0)
@@ -112,6 +115,9 @@ async def alert_by_stock(stock_name: str):
 
     async def event_generator():
         try:
+            # Send immediate keep-alive to indicate connection established
+            yield ": connected\n\n"
+
             while True:
                 try:
                     trading_plan = await asyncio.wait_for(queue.get(), timeout=30.0)

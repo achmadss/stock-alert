@@ -1,5 +1,5 @@
 import asyncio
-from telethon import TelegramClient
+from telethon import TelegramClient, events
 from dotenv import load_dotenv
 import os
 from datetime import datetime
@@ -86,9 +86,14 @@ async def save_message(msg):
     if not msg.text or 'Trading Plan' not in msg.text:
         return
 
+    print(f"📨 Received Telegram message (ID: {msg.id})")
+
     parsed = parse_trading_plan(msg.text, msg.id)
     if not parsed:
+        print(f"⚠️  Failed to parse message {msg.id} - invalid format")
         return
+
+    print(f"✓ Parsed trading plan: {parsed['name']} | Buy: {parsed['buy']} | TP: {parsed['tp']} | SL: {parsed['sl']}")
 
     async with async_session() as session:
         # Check if message_id already exists (primary duplicate check)
@@ -98,36 +103,55 @@ async def save_message(msg):
             )
         )
         if result.scalar_one_or_none():
-            print(f"Duplicate message_id {parsed['message_id']} - skipping")
+            print(f"⚠️  Duplicate message_id {parsed['message_id']} - skipping")
             return
 
         trading_plan = TradingPlan(**parsed)
         session.add(trading_plan)
         await session.commit()
 
+        print(f"💾 Saved to database: {parsed['name']} (message_id: {parsed['message_id']})")
+        print(f"📡 Broadcasting to {len(subscribers)} subscriber(s)")
+
         await broadcast_trading_plan(parsed)
 
 async def fetch_historical():
     """Fetch historical messages from the channel."""
     try:
-        print("=== FETCH HISTORY ===")
+        print("\n" + "="*60)
+        print("📚 FETCHING HISTORICAL MESSAGES")
+        print("="*60)
         channel = await client.get_entity(CHANNEL_ID)
         messages = await client.get_messages(channel, limit=100)
 
         if messages and isinstance(messages, list):
+            print(f"Found {len(messages)} messages, processing...")
+            saved_count = 0
             for msg in reversed(messages):
+                initial_count = saved_count
                 await save_message(msg)
+                # Check if a new message was saved by monitoring logs
+            print(f"✓ Historical fetch completed")
+            print("="*60 + "\n")
+        else:
+            print("⚠️  No messages found")
+            print("="*60 + "\n")
     except Exception as e:
-        print(f"Error fetching historical messages: {e}")
+        print(f"❌ Error fetching historical messages: {e}")
         print(f"CHANNEL_ID value: {CHANNEL_ID}")
         print("Make sure CHANNEL_ID is either:")
         print("  1. A channel username (e.g., @channelname)")
         print("  2. A valid channel ID (negative number for channels, e.g., -100123456789)")
         print("Note: You need to be a member of the channel to fetch messages.")
+        print("="*60 + "\n")
 
 async def new_message_handler(event):
     """Handle new messages from the channel."""
+    print(f"\n{'='*60}")
+    print(f"🔔 NEW MESSAGE EVENT from channel {CHANNEL_ID}")
+    print(f"{'='*60}")
     await save_message(event.message)
+    print(f"{'='*60}\n")
 
 async def get_channels():
     """Get list of available channels."""
@@ -143,9 +167,22 @@ async def get_channels():
 
 async def start_listener():
     """Start the telegram listener."""
-    print("Starting Telegram listener...")
+    print("\n" + "="*60)
+    print("🚀 STARTING TELEGRAM LISTENER")
+    print("="*60)
     await client.start()
-    print("Telegram client started successfully")
+    print("✓ Telegram client started successfully")
+    print(f"📡 Listening to channel ID: {CHANNEL_ID}")
+    print("="*60 + "\n")
+
     await fetch_historical()
-    print("Fetch historical completed, now listening for new messages...")
+
+    # Register the new message handler
+    client.add_event_handler(new_message_handler, events.NewMessage(chats=[CHANNEL_ID]))
+    print("✓ Event handler registered for new messages")
+
+    print("\n" + "="*60)
+    print("👂 NOW LISTENING FOR NEW MESSAGES...")
+    print("="*60 + "\n")
+
     await client.run_until_disconnected()
