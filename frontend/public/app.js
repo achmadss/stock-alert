@@ -316,7 +316,7 @@ function createStockTable(updates, stockName, showRemoveButton = false) {
     }).join('');
 
     const expandButtonHTML = showRemoveButton
-        ? `<button class="expand-stock" onclick="showStockModal('${stockName}')" title="Show details">⌞⌝</button>`
+        ? `<button class="expand-stock" onclick="showStockModal('${stockName}')" title="Show details">⛶</button>`
         : '';
 
     const removeButtonHTML = showRemoveButton
