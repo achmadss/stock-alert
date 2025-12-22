@@ -765,7 +765,8 @@ function renderFavorites() {
         }
 
         const currentUpdate = updates[0];
-        const previousUpdate = updates.length > 1 ? updates[1] : null;
+        // Use the backend's 'previous' data if available, otherwise fall back to the second item in the list
+        const previousUpdate = currentUpdate.previous || (updates.length > 1 ? updates[1] : null);
         const cardHTML = createFavoriteCard(currentUpdate, previousUpdate, stockName);
 
         return `
