@@ -318,11 +318,40 @@ body {
     color: #858585;
 }
 
-.update-values {
-    font-size: 12px;
-    color: #d4d4d4;
+.update-table {
+    width: 100%;
+    border-collapse: collapse;
     font-family: 'Consolas', 'Courier New', monospace;
-    margin-top: 6px;
+    font-size: 12px;
+}
+
+.update-table tbody tr {
+    border-bottom: 1px solid #3e3e42;
+}
+
+.update-table tbody td {
+    padding: 6px 8px;
+    color: #d4d4d4;
+}
+
+.update-table .stock-cell {
+    color: #4ec9b0;
+    font-weight: 500;
+}
+
+.update-table .buy-cell {
+    color: #569cd6;
+    font-weight: 500;
+}
+
+.update-table .tp-cell {
+    color: #4ec9b0;
+    font-weight: 500;
+}
+
+.update-table .sl-cell {
+    color: #f48771;
+    font-weight: 500;
 }
 
 .update-count {

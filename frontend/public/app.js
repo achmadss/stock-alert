@@ -389,13 +389,16 @@ function renderAllStocksTable() {
     const html = sortedStocks.flatMap(([stockName, updates]) =>
         updates.map(update => `
             <div class="update-card">
-                <div class="update-header">
-                    <div class="stock-name">${stockName}</div>
-                    <div class="update-time">${formatDateTime(update.datetime)}</div>
-                </div>
-                <div class="update-values">
-                    BUY ${formatRange(update.buy)} | TP ${formatRange(update.tp)} | SL ${update.sl}
-                </div>
+                <table class="update-table">
+                    <tbody>
+                        <tr>
+                            <td class="stock-cell">${stockName}</td>
+                            <td class="buy-cell">${formatRange(update.buy)}</td>
+                            <td class="tp-cell">${formatRange(update.tp)}</td>
+                            <td class="sl-cell">${update.sl}</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         `)
     ).join('');
