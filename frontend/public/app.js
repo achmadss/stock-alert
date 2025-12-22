@@ -370,7 +370,7 @@ function createStockTable(updates, stockName, showRemoveButton = false) {
     `;
 }
 
-// Render all stocks table in left panel
+// Render all stocks as cards in left panel
 function renderAllStocksTable() {
     const container = document.getElementById('allStocks');
 
@@ -386,8 +386,29 @@ function renderAllStocksTable() {
         return latestB - latestA;
     });
 
-    const html = sortedStocks.map(([stockName, updates]) =>
-        createStockTable(updates, stockName, false)
+    const html = sortedStocks.flatMap(([stockName, updates]) =>
+        updates.map(update => `
+            <div class="update-card">
+                <div class="update-header">
+                    <div class="stock-name">${stockName}</div>
+                    <div class="update-time">${formatDateTime(update.datetime)}</div>
+                </div>
+                <div class="update-details">
+                    <div class="detail-group buy">
+                        <div class="detail-label">BUY</div>
+                        <div class="detail-value">${update.buy.join(', ')}</div>
+                    </div>
+                    <div class="detail-group tp">
+                        <div class="detail-label">TP</div>
+                        <div class="detail-value">${update.tp.join(', ')}</div>
+                    </div>
+                    <div class="detail-group sl">
+                        <div class="detail-label">SL</div>
+                        <div class="detail-value">${update.sl}</div>
+                    </div>
+                </div>
+            </div>
+        `)
     ).join('');
 
     container.innerHTML = html;

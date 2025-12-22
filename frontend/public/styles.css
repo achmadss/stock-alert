@@ -120,6 +120,13 @@ body {
     padding: 12px;
 }
 
+.left-panel .panel-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 8px;
+    align-content: start;
+}
+
 .right-panel .panel-content {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -280,6 +287,41 @@ body {
 
 .detail-group.sl .detail-value {
     color: #f48771;
+}
+
+/* Update Cards for Left Panel */
+.update-card {
+    background: #2d2d30;
+    border: 1px solid #3e3e42;
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 8px;
+    animation: slideIn 0.3s ease;
+}
+
+.update-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.update-header .stock-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #4ec9b0;
+    font-family: 'Consolas', 'Courier New', monospace;
+}
+
+.update-header .update-time {
+    font-size: 11px;
+    color: #858585;
+}
+
+.update-details {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
 }
 
 .update-count {
