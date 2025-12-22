@@ -361,6 +361,10 @@ body {
     max-height: 400px;
 }
 
+.right-panel .stock-table-container {
+    min-height: 200px;
+}
+
 .stock-table-header {
     background: #1e1e1e;
     padding: 8px 12px;
