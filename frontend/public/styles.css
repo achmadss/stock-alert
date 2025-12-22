@@ -210,7 +210,7 @@ body {
 }
 
 .trend-indicator {
-    font-size: 8px;
+    font-size: 16px;
     display: inline-flex;
     align-items: center;
     animation: fadeIn 0.3s ease;
@@ -593,7 +593,6 @@ body {
     font-size: 12px;
     width: 30px;
     min-width: 30px;
-    padding: 8px 4px;
 }
 
 .stock-table tbody td:nth-child(1) {
