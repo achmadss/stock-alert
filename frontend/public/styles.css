@@ -294,8 +294,8 @@ body {
     background: #2d2d30;
     border: 1px solid #3e3e42;
     border-radius: 4px;
-    padding: 12px;
-    margin-bottom: 8px;
+    padding: 8px;
+    margin-bottom: 6px;
     animation: slideIn 0.3s ease;
 }
 
@@ -320,8 +320,12 @@ body {
 
 .update-details {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
+    grid-template-columns: 1fr;
+    gap: 4px;
+}
+
+.update-details .detail-group {
+    padding: 4px 6px;
 }
 
 .update-count {
