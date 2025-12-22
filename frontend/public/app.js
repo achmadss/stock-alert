@@ -396,29 +396,25 @@ function renderAllStocksTable() {
             <td class="buy-cell">${formatRange(update.buy)}</td>
             <td class="tp-cell">${formatRange(update.tp)}</td>
             <td class="sl-cell">${update.sl}</td>
-            <td class="time-cell">${formatDateTime(update.datetime)}</td>
+            <td class="time-cell">${new Date(update.datetime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}</td>
         </tr>
     `).join('');
 
     const html = `
-        <div class="stock-table-container">
-            <div class="stock-table-wrapper">
-                <table class="stock-table">
-                    <thead>
-                        <tr>
-                            <th>NAME</th>
-                            <th>BUY</th>
-                            <th>TP</th>
-                            <th>SL</th>
-                            <th>TIME</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${rows}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        <table class="stock-table">
+            <thead>
+                <tr>
+                    <th>NAME</th>
+                    <th>BUY</th>
+                    <th>TP</th>
+                    <th>SL</th>
+                    <th>TIME</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows}
+            </tbody>
+        </table>
     `;
 
     container.innerHTML = html;

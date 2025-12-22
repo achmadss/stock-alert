@@ -120,6 +120,10 @@ body {
     padding: 12px;
 }
 
+.left-panel .panel-content {
+    padding: 0;
+}
+
 
 .right-panel .panel-content {
     display: grid;
