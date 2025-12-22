@@ -17,6 +17,7 @@ const state = {
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('DOMContentLoaded fired');
     loadHiddenStocksFromStorage();
+    setupSearchListeners();
 
     // Load historical data first
     console.log('About to load historical data');
@@ -31,6 +32,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('About to connect to stream');
     connectToStream();
 });
+
+// Setup search event listeners
+function setupSearchListeners() {
+    const leftSearchInput = document.getElementById('leftSearchInput');
+    const rightSearchInput = document.getElementById('rightSearchInput');
+
+    if (leftSearchInput) {
+        leftSearchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.trim().toUpperCase();
+            filterStockTables('allStocks', searchTerm);
+        });
+    }
+
+    if (rightSearchInput) {
+        rightSearchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.trim().toUpperCase();
+            filterStockTables('frequentStocks', searchTerm);
+        });
+    }
+}
+
+// Filter stock tables by search term
+function filterStockTables(containerId, searchTerm) {
+    const container = document.getElementById(containerId);
+    const stockContainers = container.querySelectorAll('.stock-table-container');
+
+    stockContainers.forEach(stockContainer => {
+        const titleElement = stockContainer.querySelector('.stock-table-title');
+        if (!titleElement) return;
+
+        const stockName = titleElement.textContent.trim().split('\n')[0].trim();
+        if (!searchTerm || stockName.includes(searchTerm)) {
+            stockContainer.style.display = '';
+        } else {
+            stockContainer.style.display = 'none';
+        }
+    });
+}
 
 // Load hidden stocks from localStorage
 function loadHiddenStocksFromStorage() {
@@ -249,20 +288,30 @@ function renderTrendIndicator(trend) {
 
 // Create stock table for showing latest 5 updates
 function createStockTable(updates, stockName, showRemoveButton = false) {
-    // Calculate trend based on first and second update
-    const trend = updates.length >= 2 ? getBuyTrend(updates[0].buy, updates[1].buy) : null;
-    const trendHTML = renderTrendIndicator(trend);
-
     // Get latest 5 updates
     const latest5 = updates.slice(0, 5);
 
-    // Create table rows
-    const rows = latest5.map((update) => {
+    // Create table rows with trend indicators beside each value
+    const rows = latest5.map((update, index) => {
+        // Get previous update for comparison (if available)
+        const prevUpdate = index < latest5.length - 1 ? latest5[index + 1] : null;
+
+        // Calculate trends for each value
+        const buyTrend = prevUpdate ? getBuyTrend(update.buy, prevUpdate.buy) : null;
+        const tpTrend = prevUpdate ? getBuyTrend(update.tp, prevUpdate.tp) : null;
+        const slTrend = prevUpdate && update.sl !== prevUpdate.sl
+            ? (update.sl > prevUpdate.sl ? 'up' : 'down')
+            : null;
+
+        const buyTrendHTML = buyTrend ? renderTrendIndicator(buyTrend) : '';
+        const tpTrendHTML = tpTrend ? renderTrendIndicator(tpTrend) : '';
+        const slTrendHTML = slTrend ? renderTrendIndicator(slTrend) : '';
+
         return `
             <tr>
-                <td>${update.buy.join(', ')}</td>
-                <td>${update.tp.join(', ')}</td>
-                <td>${update.sl}</td>
+                <td>${update.buy.join(', ')} ${buyTrendHTML}</td>
+                <td>${update.tp.join(', ')} ${tpTrendHTML}</td>
+                <td>${update.sl} ${slTrendHTML}</td>
                 <td class="update-time">${formatDateTime(update.datetime)}</td>
             </tr>
         `;
@@ -277,7 +326,6 @@ function createStockTable(updates, stockName, showRemoveButton = false) {
             <div class="stock-table-header">
                 <div class="stock-table-title">
                     ${stockName}
-                    ${trendHTML}
                     <span class="update-count">${updates.length}</span>
                 </div>
                 ${removeButtonHTML}

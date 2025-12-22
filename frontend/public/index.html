@@ -7,7 +7,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>Stock Alert Dashboard</title>
-    <link rel="stylesheet" href="styles.css?v=12">
+    <link rel="stylesheet" href="styles.css?v=13">
 </head>
 <body>
     <div class="container">
@@ -19,6 +19,9 @@
                     <span class="status-dot"></span>
                     <span class="status-text">Loading...</span>
                 </div>
+            </div>
+            <div class="search-controls">
+                <input type="text" id="leftSearchInput" placeholder="Search stocks (e.g., MPIX)" />
             </div>
             <div class="panel-content" id="allStocks">
                 <div class="empty-state">
@@ -36,6 +39,9 @@
                     <span class="status-text">Ready</span>
                 </div>
             </div>
+            <div class="search-controls">
+                <input type="text" id="rightSearchInput" placeholder="Search stocks (e.g., MPIX)" />
+            </div>
             <div class="panel-content" id="frequentStocks">
                 <div class="empty-state">
                     <p>No stocks with 3+ updates yet</p>
@@ -44,6 +50,6 @@
         </div>
     </div>
 
-    <script src="app.js?v=12"></script>
+    <script src="app.js?v=13"></script>
 </body>
 </html>
