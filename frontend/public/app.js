@@ -10,7 +10,8 @@ const state = {
     hiddenStocks: new Set(), // Stocks manually hidden from right panel
     eventSource: null, // Single EventSource for all stocks
     reconnectTimer: null,
-    isReconnecting: false
+    isReconnecting: false,
+    currentDate: new Date().toDateString() // Track current date for day change detection
 };
 
 // Initialize app
@@ -31,6 +32,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Then connect to real-time updates
     console.log('About to connect to stream');
     connectToStream();
+
+    // Check for day changes every minute
+    setInterval(checkDayChangeAndReload, 60000);
 });
 
 // Setup search event listeners
@@ -209,6 +213,19 @@ async function handleNewStockUpdate(stockData) {
     // Re-render both panels
     renderAllStocksTable();
     renderFrequentStocksTable();
+}
+
+// Check for day change and reload data if needed
+async function checkDayChangeAndReload() {
+    const newDate = new Date().toDateString();
+    if (newDate !== state.currentDate) {
+        console.log('Day changed, reloading historical data');
+        state.currentDate = newDate;
+        state.allStocks.clear();
+        await loadHistoricalData();
+        renderAllStocksTable();
+        renderFrequentStocksTable();
+    }
 }
 
 // Hide a stock from the right panel
