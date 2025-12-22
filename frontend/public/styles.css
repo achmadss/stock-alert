@@ -356,6 +356,18 @@ body {
     flex-wrap: wrap;
 }
 
+.value-change-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.current-value-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .current-value {
     font-weight: 600;
 }
@@ -377,6 +389,21 @@ body {
     font-size: 11px;
     color: #6a6a6a;
     text-decoration: line-through;
+    line-height: 1.2;
+}
+
+.trend-icon {
+    font-size: 12px;
+    margin-left: 4px;
+    font-weight: bold;
+}
+
+.trend-icon.up {
+    color: #4ec9b0;
+}
+
+.trend-icon.down {
+    color: #f48771;
 }
 
 @media (max-width: 1024px) {

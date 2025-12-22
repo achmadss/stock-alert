@@ -449,13 +449,28 @@ function formatDateTime(datetime) {
     }
 }
 
-// Create stock card HTML
-function createStockCard(stockData, showTrend = false, previousData = null, showFavoriteStar = false) {
-    const trend = showTrend && previousData ? getBuyTrend(stockData.buy, previousData.buy) : null;
-    const trendHTML = renderTrendIndicator(trend);
+// Create stock card HTML with trend indicators
+function createStockCardWithTrend(stockData, previousData = null, showFavoriteStar = false) {
     const isFavorite = state.favorites.has(stockData.name.toUpperCase());
     const starIcon = isFavorite ? '★' : '☆';
     const starClass = isFavorite ? 'favorite-star active' : 'favorite-star';
+
+    // Calculate trends for each field
+    const buyTrend = previousData ? getBuyTrend(stockData.buy, previousData.buy) : null;
+    const tpTrend = previousData && previousData.tp ? (stockData.tp[0] > previousData.tp[0] ? 'up' : stockData.tp[0] < previousData.tp[0] ? 'down' : null) : null;
+    const slTrend = previousData && previousData.sl ? (stockData.sl > previousData.sl ? 'up' : stockData.sl < previousData.sl ? 'down' : null) : null;
+
+    const renderValueWithTrend = (value, trend, isArray = true) => {
+        const displayValue = isArray ? value.join(', ') : value;
+        const trendIcon = trend === 'up' ? '↗' : trend === 'down' ? '↘' : '';
+        const trendClass = trend === 'up' ? 'up' : trend === 'down' ? 'down' : '';
+
+        if (!trend) {
+            return displayValue;
+        }
+
+        return `${displayValue} <span class="trend-icon ${trendClass}">${trendIcon}</span>`;
+    };
 
     return `
         <div class="stock-card" data-stock-name="${stockData.name.toUpperCase()}">
@@ -463,22 +478,21 @@ function createStockCard(stockData, showTrend = false, previousData = null, show
                 <div class="stock-name">
                     ${showFavoriteStar ? `<span class="${starClass}" onclick="toggleFavorite('${stockData.name.toUpperCase()}')" title="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}">${starIcon}</span>` : ''}
                     ${stockData.name}
-                    ${trendHTML}
                 </div>
                 <div class="stock-time">${formatDateTime(stockData.datetime)}</div>
             </div>
             <div class="stock-details">
                 <div class="detail-group buy">
                     <div class="detail-label">Buy</div>
-                    <div class="detail-value">${stockData.buy.join(', ')}</div>
+                    <div class="detail-value">${renderValueWithTrend(stockData.buy, buyTrend, true)}</div>
                 </div>
                 <div class="detail-group tp">
                     <div class="detail-label">TP</div>
-                    <div class="detail-value">${stockData.tp.join(', ')}</div>
+                    <div class="detail-value">${renderValueWithTrend(stockData.tp, tpTrend, true)}</div>
                 </div>
                 <div class="detail-group sl">
                     <div class="detail-label">SL</div>
-                    <div class="detail-value">${stockData.sl}</div>
+                    <div class="detail-value">${renderValueWithTrend(stockData.sl, slTrend, false)}</div>
                 </div>
             </div>
         </div>
@@ -508,13 +522,19 @@ function renderAllStocks() {
     // Get all stock updates and sort by datetime
     const allUpdates = [];
     state.allStocks.forEach((updates, stockName) => {
-        updates.forEach(update => allUpdates.push(update));
+        updates.forEach((update, index) => {
+            // Get previous update for trend calculation
+            const previousUpdate = updates[index + 1] || null;
+            allUpdates.push({ update, previousUpdate });
+        });
     });
 
-    allUpdates.sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
+    allUpdates.sort((a, b) => new Date(b.update.datetime) - new Date(a.update.datetime));
 
-    // Render latest 20 updates with favorite star
-    const html = allUpdates.slice(0, 20).map(update => createStockCard(update, false, null, true)).join('');
+    // Render latest 20 updates with favorite star and trend indicators
+    const html = allUpdates.slice(0, 20).map(({ update, previousUpdate }) =>
+        createStockCardWithTrend(update, previousUpdate, true)
+    ).join('');
     container.innerHTML = html;
 }
 
@@ -540,10 +560,12 @@ function createFavoriteCard(currentData, previousData, stockName) {
         const arrowClass = current > prev ? 'up' : 'down';
 
         return `
-            <div class="value-change">
-                <span class="current-value">${isArray ? currentVal.join(', ') : currentVal}</span>
-                <span class="change-arrow ${arrowClass}">${arrow}</span>
-                <span class="previous-value">${isArray ? prevVal.join(', ') : prevVal}</span>
+            <div class="value-change-vertical">
+                <div class="current-value-row">
+                    <span class="current-value">${isArray ? currentVal.join(', ') : currentVal}</span>
+                    <span class="change-arrow ${arrowClass}">${arrow}</span>
+                </div>
+                <div class="previous-value">${isArray ? prevVal.join(', ') : prevVal}</div>
             </div>
         `;
     };
