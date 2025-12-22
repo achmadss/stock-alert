@@ -457,9 +457,10 @@ body {
     z-index: 10;
 }
 
-.stock-table thead th:first-child {
-    text-align: center;
-    width: 50px;
+.stock-table thead th.trend-header {
+    padding: 8px 4px;
+    width: 30px;
+    min-width: 30px;
 }
 
 .stock-table tbody tr {
@@ -483,8 +484,10 @@ body {
 
 .stock-table tbody td.trend-cell {
     text-align: center;
-    font-size: 16px;
-    width: 50px;
+    font-size: 14px;
+    width: 30px;
+    min-width: 30px;
+    padding: 8px 4px;
 }
 
 .stock-table tbody td:nth-child(2) {

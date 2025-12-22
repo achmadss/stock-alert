@@ -286,6 +286,13 @@ function renderTrendIndicator(trend) {
     return '';
 }
 
+// Format array as range (e.g., [103, 102, 101, 100] => "103-100")
+function formatRange(arr) {
+    if (!arr || arr.length === 0) return '';
+    if (arr.length === 1) return arr[0].toString();
+    return `${arr[0]}-${arr[arr.length - 1]}`;
+}
+
 // Create stock table for showing all updates
 function createStockTable(updates, stockName, showRemoveButton = false) {
     // Create table rows with single trend indicator column
@@ -300,8 +307,8 @@ function createStockTable(updates, stockName, showRemoveButton = false) {
         return `
             <tr>
                 <td class="trend-cell">${trendHTML}</td>
-                <td>${update.buy.join(', ')}</td>
-                <td>${update.tp.join(', ')}</td>
+                <td>${formatRange(update.buy)}</td>
+                <td>${formatRange(update.tp)}</td>
                 <td>${update.sl}</td>
                 <td class="update-time">${formatDateTime(update.datetime)}</td>
             </tr>
@@ -325,7 +332,7 @@ function createStockTable(updates, stockName, showRemoveButton = false) {
                 <table class="stock-table">
                     <thead>
                         <tr>
-                            <th>TREND</th>
+                            <th class="trend-header"></th>
                             <th>BUY</th>
                             <th>TP</th>
                             <th>SL</th>
