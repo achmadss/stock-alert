@@ -142,7 +142,7 @@ async def history(skip: int = 0, limit: int = 50, stock_name: Optional[str] = No
     query = select(TradingPlan).order_by(TradingPlan.datetime.desc())
 
     if stock_name:
-        query = query.where(TradingPlan.name.ilike(stock_name))
+        query = query.where(TradingPlan.name.ilike(f"%{stock_name}%"))
 
     result = await db.execute(query.offset(skip).limit(limit))
     trading_plans = result.scalars().all()
@@ -158,7 +158,10 @@ async def history(skip: int = 0, limit: int = 50, stock_name: Optional[str] = No
                 "sl": tp.sl
             }
             for tp in trading_plans
-        ]
+        ],
+        "skip": skip,
+        "limit": limit,
+        "count": len(trading_plans)
     }
 
 @app.get("/channels")

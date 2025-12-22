@@ -12,6 +12,15 @@ const state = {
     eventSources: new Map(), // key: stock name, value: EventSource
     reconnectTimers: new Map(), // key: connection name, value: timeout ID
     isReconnecting: new Map(), // key: connection name, value: boolean
+
+    // Pagination state
+    pagination: {
+        skip: 0,
+        limit: 20,
+        isLoading: false,
+        hasMore: true,
+        searchTerm: ''
+    }
 };
 
 // Initialize app
@@ -58,6 +67,7 @@ function saveFavoritesToStorage() {
 function setupEventListeners() {
     const leftSearchInput = document.getElementById('leftSearchInput');
     const rightSearchInput = document.getElementById('rightSearchInput');
+    const allStocksContainer = document.getElementById('allStocks');
 
     if (!leftSearchInput) {
         console.error('Left search input element not found!');
@@ -69,9 +79,20 @@ function setupEventListeners() {
         return;
     }
 
+    // Debounce function for search
+    let searchTimeout;
     leftSearchInput.addEventListener('input', (e) => {
-        const searchTerm = e.target.value.trim().toUpperCase();
-        filterAllStocks(searchTerm);
+        clearTimeout(searchTimeout);
+        const searchTerm = e.target.value.trim();
+
+        searchTimeout = setTimeout(async () => {
+            // Reset pagination and reload with search
+            state.pagination.skip = 0;
+            state.pagination.hasMore = true;
+            state.pagination.searchTerm = searchTerm;
+            state.allStocks.clear();
+            await loadHistoricalData();
+        }, 300); // 300ms debounce
     });
 
     rightSearchInput.addEventListener('input', (e) => {
@@ -79,21 +100,19 @@ function setupEventListeners() {
         filterFavoriteStocks(searchTerm);
     });
 
-    console.log('Event listeners set up successfully');
-}
+    // Infinite scroll for left panel
+    allStocksContainer.addEventListener('scroll', async () => {
+        const { scrollTop, scrollHeight, clientHeight } = allStocksContainer;
 
-// Filter all stocks in left panel
-function filterAllStocks(searchTerm) {
-    const allCards = document.querySelectorAll('#allStocks .stock-card');
-
-    allCards.forEach(card => {
-        const stockName = card.dataset.stockName;
-        if (!searchTerm || stockName.includes(searchTerm)) {
-            card.style.display = '';
-        } else {
-            card.style.display = 'none';
+        // Check if scrolled near bottom (within 100px)
+        if (scrollTop + clientHeight >= scrollHeight - 100) {
+            if (!state.pagination.isLoading && state.pagination.hasMore) {
+                await loadMoreStocks();
+            }
         }
     });
+
+    console.log('Event listeners set up successfully');
 }
 
 // Filter favorite stocks in right panel
@@ -239,8 +258,11 @@ async function loadHistoricalData() {
     const statusEl = document.getElementById('leftStatus');
     updateConnectionStatus(statusEl, 'connecting');
 
+    state.pagination.isLoading = true;
+
     try {
-        const url = `${API_BASE_URL}/history?limit=50`;
+        const searchParam = state.pagination.searchTerm ? `&stock_name=${encodeURIComponent(state.pagination.searchTerm)}` : '';
+        const url = `${API_BASE_URL}/history?skip=${state.pagination.skip}&limit=${state.pagination.limit}${searchParam}`;
         console.log('Fetching historical data from:', url);
         const response = await fetch(url);
         console.log('History response status:', response.status);
@@ -249,6 +271,9 @@ async function loadHistoricalData() {
         }
         const data = await response.json();
         console.log('History data received, count:', data.trading_plans?.length || 0);
+
+        // Check if there's more data to load
+        state.pagination.hasMore = data.count === state.pagination.limit;
 
         // Process historical data
         data.trading_plans.forEach(plan => {
@@ -267,7 +292,10 @@ async function loadHistoricalData() {
             }
         });
 
-        // Render initial data
+        // Update skip for next page
+        state.pagination.skip += data.count;
+
+        // Render data
         renderAllStocks();
 
         // Update status to show we're ready for real-time
@@ -276,6 +304,60 @@ async function loadHistoricalData() {
     } catch (error) {
         console.error('Error loading historical data:', error);
         updateConnectionStatus(statusEl, 'error');
+    } finally {
+        state.pagination.isLoading = false;
+    }
+}
+
+// Load more stocks (pagination)
+async function loadMoreStocks() {
+    if (state.pagination.isLoading || !state.pagination.hasMore) {
+        return;
+    }
+
+    state.pagination.isLoading = true;
+
+    try {
+        const searchParam = state.pagination.searchTerm ? `&stock_name=${encodeURIComponent(state.pagination.searchTerm)}` : '';
+        const url = `${API_BASE_URL}/history?skip=${state.pagination.skip}&limit=${state.pagination.limit}${searchParam}`;
+        console.log('Loading more stocks from:', url);
+
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log('More stocks loaded, count:', data.count);
+
+        // Check if there's more data to load
+        state.pagination.hasMore = data.count === state.pagination.limit;
+
+        // Process new data
+        data.trading_plans.forEach(plan => {
+            const stockName = plan.name.toUpperCase();
+
+            if (!state.allStocks.has(stockName)) {
+                state.allStocks.set(stockName, []);
+            }
+
+            // Add to all stocks (use message_id to check duplicates)
+            const existing = state.allStocks.get(stockName).find(
+                item => item.message_id === plan.message_id
+            );
+            if (!existing) {
+                state.allStocks.get(stockName).push(plan);
+            }
+        });
+
+        // Update skip for next page
+        state.pagination.skip += data.count;
+
+        // Re-render to show new data
+        renderAllStocks();
+    } catch (error) {
+        console.error('Error loading more stocks:', error);
+    } finally {
+        state.pagination.isLoading = false;
     }
 }
 
@@ -505,22 +587,9 @@ function createStockCardWithTrend(stockData, previousData = null, showFavoriteSt
     const starIcon = isFavorite ? '★' : '☆';
     const starClass = isFavorite ? 'favorite-star active' : 'favorite-star';
 
-    // Calculate trends for each field
-    const buyTrend = previousData ? getBuyTrend(stockData.buy, previousData.buy) : null;
-    const tpTrend = previousData && previousData.tp ? (stockData.tp[0] > previousData.tp[0] ? 'up' : stockData.tp[0] < previousData.tp[0] ? 'down' : null) : null;
-    const slTrend = previousData && previousData.sl ? (stockData.sl > previousData.sl ? 'up' : stockData.sl < previousData.sl ? 'down' : null) : null;
-
-    const renderValueWithTrend = (value, trend, isArray = true) => {
-        const displayValue = isArray ? value.join(', ') : value;
-        const trendIcon = trend === 'up' ? '↗' : trend === 'down' ? '↘' : '';
-        const trendClass = trend === 'up' ? 'up' : trend === 'down' ? 'down' : '';
-
-        if (!trend) {
-            return displayValue;
-        }
-
-        return `${displayValue} <span class="trend-icon ${trendClass}">${trendIcon}</span>`;
-    };
+    // Calculate overall trend based on buy values
+    const trend = previousData ? getBuyTrend(stockData.buy, previousData.buy) : null;
+    const trendHTML = renderTrendIndicator(trend);
 
     return `
         <div class="stock-card" data-stock-name="${stockData.name.toUpperCase()}">
@@ -528,21 +597,22 @@ function createStockCardWithTrend(stockData, previousData = null, showFavoriteSt
                 <div class="stock-name">
                     ${showFavoriteStar ? `<span class="${starClass}" onclick="toggleFavorite('${stockData.name.toUpperCase()}')" title="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}">${starIcon}</span>` : ''}
                     ${stockData.name}
+                    ${trendHTML}
                 </div>
                 <div class="stock-time">${formatDateTime(stockData.datetime)}</div>
             </div>
             <div class="stock-details">
                 <div class="detail-group buy">
                     <div class="detail-label">Buy</div>
-                    <div class="detail-value">${renderValueWithTrend(stockData.buy, buyTrend, true)}</div>
+                    <div class="detail-value">${stockData.buy.join(', ')}</div>
                 </div>
                 <div class="detail-group tp">
                     <div class="detail-label">TP</div>
-                    <div class="detail-value">${renderValueWithTrend(stockData.tp, tpTrend, true)}</div>
+                    <div class="detail-value">${stockData.tp.join(', ')}</div>
                 </div>
                 <div class="detail-group sl">
                     <div class="detail-label">SL</div>
-                    <div class="detail-value">${renderValueWithTrend(stockData.sl, slTrend, false)}</div>
+                    <div class="detail-value">${stockData.sl}</div>
                 </div>
             </div>
         </div>
@@ -564,7 +634,7 @@ function toggleFavorite(stockName) {
 function renderAllStocks() {
     const container = document.getElementById('allStocks');
 
-    if (state.allStocks.size === 0) {
+    if (state.allStocks.size === 0 && !state.pagination.isLoading) {
         container.innerHTML = '<div class="empty-state"><p>Waiting for stock updates...</p></div>';
         return;
     }
@@ -581,10 +651,18 @@ function renderAllStocks() {
 
     allUpdates.sort((a, b) => new Date(b.update.datetime) - new Date(a.update.datetime));
 
-    // Render latest 20 updates with favorite star and trend indicators
-    const html = allUpdates.slice(0, 20).map(({ update, previousUpdate }) =>
+    // Render all loaded updates with favorite star and trend indicators
+    let html = allUpdates.map(({ update, previousUpdate }) =>
         createStockCardWithTrend(update, previousUpdate, true)
     ).join('');
+
+    // Add loading indicator at the bottom if loading more
+    if (state.pagination.isLoading) {
+        html += '<div class="loading-indicator" style="text-align: center; padding: 20px; color: #858585;">Loading more...</div>';
+    } else if (!state.pagination.hasMore && allUpdates.length > 0) {
+        html += '<div class="loading-indicator" style="text-align: center; padding: 20px; color: #6a6a6a;">No more updates</div>';
+    }
+
     container.innerHTML = html;
 }
 
