@@ -56,24 +56,24 @@ function saveFavoritesToStorage() {
 
 // Setup event listeners
 function setupEventListeners() {
-    const addBtn = document.getElementById('addFavoriteBtn');
-    const input = document.getElementById('favoriteInput');
+    const input = document.getElementById('searchInput');
 
-    addBtn.addEventListener('click', () => {
-        const stockName = input.value.trim().toUpperCase();
-        if (stockName) {
-            addFavorite(stockName);
-            input.value = '';
-        }
+    input.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.trim().toUpperCase();
+        filterStocks(searchTerm);
     });
+}
 
-    input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            const stockName = input.value.trim().toUpperCase();
-            if (stockName) {
-                addFavorite(stockName);
-                input.value = '';
-            }
+// Filter stocks based on search term
+function filterStocks(searchTerm) {
+    const allCards = document.querySelectorAll('#allStocks .stock-card');
+
+    allCards.forEach(card => {
+        const stockName = card.dataset.stockName;
+        if (!searchTerm || stockName.includes(searchTerm)) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
         }
     });
 }
@@ -438,14 +438,18 @@ function formatDateTime(datetime) {
 }
 
 // Create stock card HTML
-function createStockCard(stockData, showTrend = false, previousData = null) {
+function createStockCard(stockData, showTrend = false, previousData = null, showFavoriteStar = false) {
     const trend = showTrend && previousData ? getBuyTrend(stockData.buy, previousData.buy) : null;
     const trendHTML = renderTrendIndicator(trend);
+    const isFavorite = state.favorites.has(stockData.name.toUpperCase());
+    const starIcon = isFavorite ? '★' : '☆';
+    const starClass = isFavorite ? 'favorite-star active' : 'favorite-star';
 
     return `
-        <div class="stock-card">
+        <div class="stock-card" data-stock-name="${stockData.name.toUpperCase()}">
             <div class="stock-header">
                 <div class="stock-name">
+                    ${showFavoriteStar ? `<span class="${starClass}" onclick="toggleFavorite('${stockData.name.toUpperCase()}')" title="${isFavorite ? 'Remove from favorites' : 'Add to favorites'}">${starIcon}</span>` : ''}
                     ${stockData.name}
                     ${trendHTML}
                 </div>
@@ -469,6 +473,17 @@ function createStockCard(stockData, showTrend = false, previousData = null) {
     `;
 }
 
+// Toggle favorite status
+function toggleFavorite(stockName) {
+    if (state.favorites.has(stockName)) {
+        removeFavorite(stockName);
+    } else {
+        addFavorite(stockName);
+    }
+    // Re-render to update star icons
+    renderAllStocks();
+}
+
 // Render all stocks in left panel
 function renderAllStocks() {
     const container = document.getElementById('allStocks');
@@ -486,9 +501,66 @@ function renderAllStocks() {
 
     allUpdates.sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
 
-    // Render latest 20 updates
-    const html = allUpdates.slice(0, 20).map(update => createStockCard(update)).join('');
+    // Render latest 20 updates with favorite star
+    const html = allUpdates.slice(0, 20).map(update => createStockCard(update, false, null, true)).join('');
     container.innerHTML = html;
+}
+
+// Create combined favorite card with both current and previous values
+function createFavoriteCard(currentData, previousData, stockName) {
+    const trend = previousData ? getBuyTrend(currentData.buy, previousData.buy) : null;
+    const trendHTML = renderTrendIndicator(trend);
+
+    // Helper function to create value display with change indicator
+    const createValueWithChange = (currentVal, prevVal, isArray = true) => {
+        if (!prevVal) {
+            return isArray ? currentVal.join(', ') : currentVal;
+        }
+
+        const current = isArray ? currentVal[0] : currentVal;
+        const prev = isArray ? prevVal[0] : prevVal;
+
+        if (current === prev) {
+            return isArray ? currentVal.join(', ') : currentVal;
+        }
+
+        const arrow = current > prev ? '↗' : '↘';
+        const arrowClass = current > prev ? 'up' : 'down';
+
+        return `
+            <div class="value-change">
+                <span class="current-value">${isArray ? currentVal.join(', ') : currentVal}</span>
+                <span class="change-arrow ${arrowClass}">${arrow}</span>
+                <span class="previous-value">${isArray ? prevVal.join(', ') : prevVal}</span>
+            </div>
+        `;
+    };
+
+    return `
+        <div class="stock-card favorite-card">
+            <div class="stock-header">
+                <div class="stock-name">
+                    ${stockName}
+                    ${trendHTML}
+                </div>
+                <div class="stock-time">${formatDateTime(currentData.datetime)}</div>
+            </div>
+            <div class="stock-details">
+                <div class="detail-group buy">
+                    <div class="detail-label">Buy</div>
+                    <div class="detail-value">${createValueWithChange(currentData.buy, previousData?.buy)}</div>
+                </div>
+                <div class="detail-group tp">
+                    <div class="detail-label">TP</div>
+                    <div class="detail-value">${createValueWithChange(currentData.tp, previousData?.tp)}</div>
+                </div>
+                <div class="detail-group sl">
+                    <div class="detail-label">SL</div>
+                    <div class="detail-value">${createValueWithChange([currentData.sl], previousData ? [previousData.sl] : null, false)}</div>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 // Render favorites in right panel
@@ -496,30 +568,41 @@ function renderFavorites() {
     const container = document.getElementById('favoriteStocks');
 
     if (state.favorites.size === 0) {
-        container.innerHTML = '<div class="empty-state"><p>No favorites yet. Add a stock symbol above to track it.</p></div>';
+        container.innerHTML = '<div class="empty-state"><p>No favorites yet. Click the star on any stock in the left panel to add it to favorites.</p></div>';
         return;
     }
 
     const favoritesHTML = [...state.favorites].map(stockName => {
         const updates = state.favoriteUpdates.get(stockName) || [];
-        const updateCount = updates.length;
 
-        const updatesHTML = updates.map((update, index) => {
-            const previousUpdate = updates[index + 1];
-            return createStockCard(update, true, previousUpdate);
-        }).join('');
+        if (updates.length === 0) {
+            return `
+                <div class="favorite-section">
+                    <div class="favorite-header">
+                        <div class="favorite-title">
+                            ${stockName}
+                        </div>
+                        <button class="remove-favorite" onclick="removeFavorite('${stockName}')">Remove</button>
+                    </div>
+                    <div class="favorite-updates">
+                        <div class="empty-state"><p>Waiting for updates...</p></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        const currentUpdate = updates[0];
+        const previousUpdate = updates.length > 1 ? updates[1] : null;
+        const cardHTML = createFavoriteCard(currentUpdate, previousUpdate, stockName);
 
         return `
             <div class="favorite-section">
                 <div class="favorite-header">
-                    <div class="favorite-title">
-                        ${stockName}
-                        <span class="update-count">${updateCount} update${updateCount !== 1 ? 's' : ''}</span>
-                    </div>
+                    <div class="favorite-title">${stockName}</div>
                     <button class="remove-favorite" onclick="removeFavorite('${stockName}')">Remove</button>
                 </div>
                 <div class="favorite-updates">
-                    ${updatesHTML || '<div class="empty-state"><p>Waiting for updates...</p></div>'}
+                    ${cardHTML}
                 </div>
             </div>
         `;
@@ -528,5 +611,6 @@ function renderFavorites() {
     container.innerHTML = favoritesHTML;
 }
 
-// Make removeFavorite globally accessible
+// Make functions globally accessible
 window.removeFavorite = removeFavorite;
+window.toggleFavorite = toggleFavorite;
