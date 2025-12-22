@@ -210,7 +210,7 @@ body {
 }
 
 .trend-indicator {
-    font-size: 24px;
+    font-size: 8px;
     display: inline-flex;
     align-items: center;
     animation: fadeIn 0.3s ease;
@@ -590,7 +590,7 @@ body {
 
 .stock-table tbody td.trend-cell {
     text-align: center;
-    font-size: 6px;
+    font-size: 12px;
     width: 30px;
     min-width: 30px;
     padding: 8px 4px;
