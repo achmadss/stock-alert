@@ -315,6 +315,10 @@ function createStockTable(updates, stockName, showRemoveButton = false) {
         `;
     }).join('');
 
+    const expandButtonHTML = showRemoveButton
+        ? `<button class="expand-stock" onclick="showStockModal('${stockName}')" title="Show details">⌞⌝</button>`
+        : '';
+
     const removeButtonHTML = showRemoveButton
         ? `<button class="remove-stock" onclick="hideStock('${stockName}')" title="Remove from panel">×</button>`
         : '';
@@ -326,6 +330,7 @@ function createStockTable(updates, stockName, showRemoveButton = false) {
                     ${stockName}
                     <span class="update-count">${updates.length}</span>
                 </div>
+                ${expandButtonHTML}
                 ${removeButtonHTML}
             </div>
             <div class="stock-table-wrapper">
@@ -402,5 +407,68 @@ function renderFrequentStocksTable() {
     container.innerHTML = html;
 }
 
+// Show detailed stock modal
+function showStockModal(stockName) {
+    const updates = state.allStocks.get(stockName.toUpperCase());
+    if (!updates) return;
+
+    const modal = document.getElementById('stockModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+
+    modalTitle.textContent = `${stockName} - All Updates (${updates.length})`;
+
+    // Create detailed table
+    const tableHTML = `
+        <table class="stock-table">
+            <thead>
+                <tr>
+                    <th class="trend-header"></th>
+                    <th>BUY</th>
+                    <th>TP</th>
+                    <th>SL</th>
+                    <th>TIME</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${updates.map((update, index) => {
+                    const prevUpdate = index < updates.length - 1 ? updates[index + 1] : null;
+                    const buyTrend = prevUpdate ? getBuyTrend(update.buy, prevUpdate.buy) : null;
+                    const trendHTML = buyTrend ? renderTrendIndicator(buyTrend) : '<span class="trend-indicator">—</span>';
+
+                    return `
+                        <tr>
+                            <td class="trend-cell">${trendHTML}</td>
+                            <td>${update.buy.join(', ')}</td>
+                            <td>${update.tp.join(', ')}</td>
+                            <td>${update.sl}</td>
+                            <td class="update-time">${formatDateTime(update.datetime)}</td>
+                        </tr>
+                    `;
+                }).join('')}
+            </tbody>
+        </table>
+    `;
+
+    modalBody.innerHTML = tableHTML;
+    modal.style.display = 'block';
+}
+
+// Close stock modal
+function closeStockModal() {
+    const modal = document.getElementById('stockModal');
+    modal.style.display = 'none';
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const modal = document.getElementById('stockModal');
+    if (event.target === modal) {
+        closeStockModal();
+    }
+}
+
 // Make functions globally accessible
 window.hideStock = hideStock;
+window.showStockModal = showStockModal;
+window.closeStockModal = closeStockModal;
