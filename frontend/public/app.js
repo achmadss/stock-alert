@@ -370,7 +370,7 @@ function createStockTable(updates, stockName, showRemoveButton = false) {
     `;
 }
 
-// Render all stocks as cards in left panel
+// Render all stocks as a table in left panel
 function renderAllStocksTable() {
     const container = document.getElementById('allStocks');
 
@@ -379,29 +379,47 @@ function renderAllStocksTable() {
         return;
     }
 
-    // Sort stocks by latest update time
-    const sortedStocks = [...state.allStocks.entries()].sort((a, b) => {
-        const latestA = new Date(a[1][0].datetime);
-        const latestB = new Date(b[1][0].datetime);
-        return latestB - latestA;
-    });
+    // Collect all updates with stock names
+    const allUpdates = [];
+    for (const [stockName, updates] of state.allStocks) {
+        updates.forEach(update => {
+            allUpdates.push({ stockName, ...update });
+        });
+    }
 
-    const html = sortedStocks.flatMap(([stockName, updates]) =>
-        updates.map(update => `
-            <div class="update-card">
-                <table class="update-table">
-                    <tbody>
+    // Sort all updates by datetime descending
+    allUpdates.sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
+
+    const rows = allUpdates.map(update => `
+        <tr>
+            <td class="name-cell">${update.stockName}</td>
+            <td class="buy-cell">${formatRange(update.buy)}</td>
+            <td class="tp-cell">${formatRange(update.tp)}</td>
+            <td class="sl-cell">${update.sl}</td>
+            <td class="time-cell">${formatDateTime(update.datetime)}</td>
+        </tr>
+    `).join('');
+
+    const html = `
+        <div class="stock-table-container">
+            <div class="stock-table-wrapper">
+                <table class="stock-table">
+                    <thead>
                         <tr>
-                            <td class="stock-cell">${stockName}</td>
-                            <td class="buy-cell">${formatRange(update.buy)}</td>
-                            <td class="tp-cell">${formatRange(update.tp)}</td>
-                            <td class="sl-cell">${update.sl}</td>
+                            <th>NAME</th>
+                            <th>BUY</th>
+                            <th>TP</th>
+                            <th>SL</th>
+                            <th>TIME</th>
                         </tr>
+                    </thead>
+                    <tbody>
+                        ${rows}
                     </tbody>
                 </table>
             </div>
-        `)
-    ).join('');
+        </div>
+    `;
 
     container.innerHTML = html;
 }

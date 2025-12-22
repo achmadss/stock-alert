@@ -120,12 +120,6 @@ body {
     padding: 12px;
 }
 
-.left-panel .panel-content {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 8px;
-    align-content: start;
-}
 
 .right-panel .panel-content {
     display: grid;
@@ -594,6 +588,11 @@ body {
     padding: 8px 4px;
 }
 
+.stock-table tbody td:nth-child(1) {
+    color: #4ec9b0;
+    font-weight: 500;
+}
+
 .stock-table tbody td:nth-child(2) {
     color: #569cd6;
     font-weight: 500;
@@ -607,6 +606,10 @@ body {
 .stock-table tbody td:nth-child(4) {
     color: #f48771;
     font-weight: 500;
+}
+
+.stock-table tbody td:nth-child(5) {
+    color: #858585;
 }
 
 .stock-table .update-time {
