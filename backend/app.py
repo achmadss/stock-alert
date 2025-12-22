@@ -11,6 +11,8 @@ from alembic.config import Config
 from alembic import command
 import sys
 import asyncio
+from datetime import datetime, timedelta
+import pytz
 
 
 def run_migrations():
@@ -54,6 +56,25 @@ app.add_middleware(
 )
 
 listener_task = None
+
+
+def get_today_range_utc7():
+    """Get start and end datetime for today in UTC+7 timezone."""
+    # Get current time in UTC+7
+    utc7 = pytz.timezone('Asia/Jakarta')  # UTC+7
+    now_utc7 = datetime.now(utc7)
+
+    # Get start of today (00:00:00) in UTC+7
+    start_of_day = now_utc7.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    # Get end of today (23:59:59) in UTC+7
+    end_of_day = now_utc7.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+    # Convert to naive datetime (remove timezone info) since database stores naive datetimes
+    start_naive = start_of_day.replace(tzinfo=None)
+    end_naive = end_of_day.replace(tzinfo=None)
+
+    return start_naive, end_naive
 
 
 @app.on_event("startup")
@@ -138,8 +159,15 @@ async def alert_by_stock(stock_name: str):
 
 @app.get("/history")
 async def history(skip: int = 0, limit: int = 50, stock_name: Optional[str] = None, db=Depends(get_db)):
-    """Get historical trading plans, optionally filtered by stock name (case-insensitive)."""
-    query = select(TradingPlan).order_by(TradingPlan.datetime.desc())
+    """Get historical trading plans for today only, optionally filtered by stock name (case-insensitive)."""
+    # Get today's date range in UTC+7
+    start_of_day, end_of_day = get_today_range_utc7()
+
+    # Filter by today's date
+    query = select(TradingPlan).where(
+        TradingPlan.datetime >= start_of_day,
+        TradingPlan.datetime <= end_of_day
+    ).order_by(TradingPlan.datetime.desc())
 
     if stock_name:
         query = query.where(TradingPlan.name.ilike(f"%{stock_name}%"))
@@ -147,13 +175,14 @@ async def history(skip: int = 0, limit: int = 50, stock_name: Optional[str] = No
     result = await db.execute(query.offset(skip).limit(limit))
     trading_plans = result.scalars().all()
 
-    # For each trading plan, fetch the previous one for the same stock
+    # For each trading plan, fetch the previous one for the same stock (within today only)
     enriched_plans = []
     for tp in trading_plans:
-        # Query for the previous update of the same stock
+        # Query for the previous update of the same stock (within today's range)
         prev_query = select(TradingPlan).where(
             TradingPlan.name == tp.name,
-            TradingPlan.datetime < tp.datetime
+            TradingPlan.datetime < tp.datetime,
+            TradingPlan.datetime >= start_of_day  # Only get previous from today
         ).order_by(TradingPlan.datetime.desc()).limit(1)
 
         prev_result = await db.execute(prev_query)

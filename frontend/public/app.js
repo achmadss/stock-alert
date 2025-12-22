@@ -365,7 +365,7 @@ async function loadMoreStocks() {
 async function loadFavoritesData() {
     const promises = [...state.favorites].map(async (stockName) => {
         try {
-            const response = await fetch(`${API_BASE_URL}/history?stock_name=${stockName}&limit=2`);
+            const response = await fetch(`${API_BASE_URL}/history?stock_name=${stockName}&limit=3`);
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
@@ -440,9 +440,9 @@ async function handleNewStockUpdate(stockData) {
         if (!existingInFavorites) {
             favoriteList.unshift(stockData);
 
-            // Keep only latest 2 updates
-            if (favoriteList.length > 2) {
-                favoriteList.length = 2;
+            // Keep only latest 3 updates
+            if (favoriteList.length > 3) {
+                favoriteList.length = 3;
             }
 
             renderFavorites();
@@ -475,9 +475,9 @@ function handleFavoriteUpdate(stockData) {
 
     updates.unshift(stockData);
 
-    // Keep only latest 2 updates
-    if (updates.length > 2) {
-        updates.length = 2;
+    // Keep only latest 3 updates
+    if (updates.length > 3) {
+        updates.length = 3;
     }
 
     renderFavorites();
@@ -496,7 +496,7 @@ async function addFavorite(stockName) {
 
     // Load historical data for this stock
     try {
-        const response = await fetch(`${API_BASE_URL}/history?stock_name=${stockName}&limit=2`);
+        const response = await fetch(`${API_BASE_URL}/history?stock_name=${stockName}&limit=3`);
         if (response.ok) {
             const data = await response.json();
             if (data.trading_plans.length > 0) {
@@ -683,55 +683,45 @@ function renderAllStocks() {
     container.innerHTML = html;
 }
 
-// Create combined favorite card with both current and previous values
-function createFavoriteCard(currentData, previousData, stockName) {
-    const trend = previousData ? getBuyTrend(currentData.buy, previousData.buy) : null;
+// Create favorite table for a stock showing latest 3 updates
+function createFavoriteTable(updates, stockName) {
+    // Calculate trend based on first and second update
+    const trend = updates.length >= 2 ? getBuyTrend(updates[0].buy, updates[1].buy) : null;
     const trendHTML = renderTrendIndicator(trend);
 
-    // Helper function to create value display with change indicator (strikethrough only)
-    const createValueWithChange = (currentVal, prevVal, isArray = true) => {
-        if (!prevVal) {
-            return isArray ? currentVal.join(', ') : currentVal;
-        }
-
-        const current = isArray ? currentVal[0] : currentVal;
-        const prev = isArray ? prevVal[0] : prevVal;
-
-        if (current === prev) {
-            return isArray ? currentVal.join(', ') : currentVal;
-        }
-
+    // Create table rows for up to 3 updates
+    const rows = updates.map((update) => {
         return `
-            <div class="value-change-vertical">
-                <div class="current-value">${isArray ? currentVal.join(', ') : currentVal}</div>
-                <div class="previous-value">${isArray ? prevVal.join(', ') : prevVal}</div>
-            </div>
+            <tr>
+                <td>${update.buy.join(', ')}</td>
+                <td>${update.tp.join(', ')}</td>
+                <td>${update.sl}</td>
+                <td class="update-time">${formatDateTime(update.datetime)}</td>
+            </tr>
         `;
-    };
+    }).join('');
 
     return `
-        <div class="stock-card favorite-card">
-            <div class="stock-header">
-                <div class="stock-name">
+        <div class="favorite-table-container">
+            <div class="favorite-table-header">
+                <div class="favorite-table-title">
                     ${stockName}
                     ${trendHTML}
                 </div>
-                <div class="stock-time">${formatDateTime(currentData.datetime)}</div>
             </div>
-            <div class="stock-details">
-                <div class="detail-group buy">
-                    <div class="detail-label">Buy</div>
-                    <div class="detail-value">${createValueWithChange(currentData.buy, previousData?.buy)}</div>
-                </div>
-                <div class="detail-group tp">
-                    <div class="detail-label">TP</div>
-                    <div class="detail-value">${createValueWithChange(currentData.tp, previousData?.tp)}</div>
-                </div>
-                <div class="detail-group sl">
-                    <div class="detail-label">SL</div>
-                    <div class="detail-value">${createValueWithChange([currentData.sl], previousData ? [previousData.sl] : null, false)}</div>
-                </div>
-            </div>
+            <table class="favorite-table">
+                <thead>
+                    <tr>
+                        <th>BUY</th>
+                        <th>TP</th>
+                        <th>SL</th>
+                        <th>TIME</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows}
+                </tbody>
+            </table>
         </div>
     `;
 }
@@ -764,20 +754,14 @@ function renderFavorites() {
             `;
         }
 
-        const currentUpdate = updates[0];
-        // Use the backend's 'previous' data if available, otherwise fall back to the second item in the list
-        const previousUpdate = currentUpdate.previous || (updates.length > 1 ? updates[1] : null);
-        const cardHTML = createFavoriteCard(currentUpdate, previousUpdate, stockName);
+        const tableHTML = createFavoriteTable(updates, stockName);
 
         return `
             <div class="favorite-section">
                 <div class="favorite-header">
-                    <div class="favorite-title">${stockName}</div>
                     <button class="remove-favorite" onclick="removeFavorite('${stockName}')">Remove</button>
                 </div>
-                <div class="favorite-updates">
-                    ${cardHTML}
-                </div>
+                ${tableHTML}
             </div>
         `;
     }).join('');
