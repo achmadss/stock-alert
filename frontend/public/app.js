@@ -57,16 +57,15 @@ function setupSearchListeners() {
     }
 }
 
-// Filter stock tables by search term
+// Filter stock tables by search term (searches locally in already-loaded data)
 function filterStockTables(containerId, searchTerm) {
     const container = document.getElementById(containerId);
     const stockContainers = container.querySelectorAll('.stock-table-container');
 
     stockContainers.forEach(stockContainer => {
-        const titleElement = stockContainer.querySelector('.stock-table-title');
-        if (!titleElement) return;
+        const stockName = stockContainer.getAttribute('data-stock-name');
+        if (!stockName) return;
 
-        const stockName = titleElement.textContent.trim().split('\n')[0].trim();
         if (!searchTerm || stockName.includes(searchTerm)) {
             stockContainer.style.display = '';
         } else {
@@ -177,7 +176,7 @@ async function loadHistoricalData() {
         });
 
         // Sort each stock's updates by datetime descending
-        state.allStocks.forEach((updates, stockName) => {
+        state.allStocks.forEach((updates) => {
             updates.sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
         });
 
@@ -341,7 +340,7 @@ function createStockTable(updates, stockName, showRemoveButton = false) {
         : '';
 
     return `
-        <div class="stock-table-container">
+        <div class="stock-table-container" data-stock-name="${stockName}">
             <div class="stock-table-header">
                 <div class="stock-table-title">
                     ${stockName}
