@@ -60,18 +60,35 @@ function setupSearchListeners() {
 // Filter stock tables by search term (searches locally in already-loaded data)
 function filterStockTables(containerId, searchTerm) {
     const container = document.getElementById(containerId);
-    const stockContainers = container.querySelectorAll('.stock-table-container');
 
-    stockContainers.forEach(stockContainer => {
-        const stockName = stockContainer.getAttribute('data-stock-name');
-        if (!stockName) return;
+    if (containerId === 'allStocks') {
+        // Left panel: filter table rows by stock name
+        const rows = container.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            const nameCell = row.querySelector('.name-cell');
+            if (!nameCell) return;
 
-        if (!searchTerm || stockName.includes(searchTerm)) {
-            stockContainer.style.display = '';
-        } else {
-            stockContainer.style.display = 'none';
-        }
-    });
+            const stockName = nameCell.textContent.trim();
+            if (!searchTerm || stockName.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    } else {
+        // Right panel: filter stock containers
+        const stockContainers = container.querySelectorAll('.stock-table-container');
+        stockContainers.forEach(stockContainer => {
+            const stockName = stockContainer.getAttribute('data-stock-name');
+            if (!stockName) return;
+
+            if (!searchTerm || stockName.includes(searchTerm)) {
+                stockContainer.style.display = '';
+            } else {
+                stockContainer.style.display = 'none';
+            }
+        });
+    }
 }
 
 // Load hidden stocks from localStorage
